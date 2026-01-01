@@ -17,6 +17,11 @@ class BaseReviewer(ABC):
         self.max_tokens = self.config["review"]["max_tokens"]
         self.temperature = self.config["review"]["temperature"]
 
+        # Extended thinking configuration
+        self.extended_thinking = self.config["review"].get("extended_thinking", {})
+        self.use_extended_thinking = self.extended_thinking.get("enabled", False)
+        self.thinking_budget = self.extended_thinking.get("budget_tokens", 10000)
+
     def _load_config(self, path: str) -> dict:
         with open(path) as f:
             return yaml.safe_load(f)
@@ -65,15 +70,35 @@ Keywords: {', '.join(metadata.get('keywords', []))}
 
 Please provide your review following the specified output format."""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}]
-        )
+        # Build API request parameters
+        request_params = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": user_prompt}]
+        }
 
-        return self._parse_response(response.content[0].text)
+        # Add extended thinking if enabled (for deeper analysis)
+        if self.use_extended_thinking:
+            request_params["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": self.thinking_budget
+            }
+            # Extended thinking requires temperature=1
+            request_params["temperature"] = 1
+        else:
+            request_params["temperature"] = self.temperature
+
+        response = self.client.messages.create(**request_params)
+
+        # Extract text response (may include thinking blocks)
+        response_text = ""
+        for block in response.content:
+            if hasattr(block, 'text'):
+                response_text = block.text
+                break
+
+        return self._parse_response(response_text)
 
     def _parse_response(self, response_text: str) -> dict:
         """Parse agent response into structured format."""

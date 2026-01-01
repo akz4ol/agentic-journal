@@ -112,15 +112,34 @@ author_action_items:
 
 Please provide your meta-review and final decision following the specified output format."""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}]
-        )
+        # Build API request parameters
+        request_params = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": user_prompt}]
+        }
 
-        return self._parse_response(response.content[0].text)
+        # Add extended thinking if enabled (for deeper synthesis)
+        if self.use_extended_thinking:
+            request_params["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": self.thinking_budget
+            }
+            request_params["temperature"] = 1
+        else:
+            request_params["temperature"] = self.temperature
+
+        response = self.client.messages.create(**request_params)
+
+        # Extract text response
+        response_text = ""
+        for block in response.content:
+            if hasattr(block, 'text'):
+                response_text = block.text
+                break
+
+        return self._parse_response(response_text)
 
     def _format_reviews(self, reviews: dict) -> str:
         """Format reviews dict into readable text."""

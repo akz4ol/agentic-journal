@@ -12,8 +12,13 @@ rate_limits:
 
 review:
   model: "claude-sonnet-4-20250514"
-  max_tokens: 4096
+  max_tokens: 8192  # Increased for detailed reviews
   temperature: 0.3
+
+  # Extended thinking for thorough analysis (requires compatible model)
+  extended_thinking:
+    enabled: true
+    budget_tokens: 10000  # Internal reasoning budget
 
   agents:
     technical:
