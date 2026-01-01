@@ -1,0 +1,357 @@
+name: Process Submission
+
+on:
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # When a new submission issue is created, add instructions
+  welcome:
+    name: Welcome Submission
+    if: github.event_name == 'issues' && github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'submission')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post welcome comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `## 📄 Submission Received!
+
+            Thank you for your submission. To complete the process:
+
+            ### Next Step: Upload Your PDF
+
+            Please **reply to this issue** with your paper PDF attached.
+
+            Simply drag and drop your PDF file into the comment box below, or click the attach button.
+
+            ---
+
+            Once you upload the PDF, our automated review system will:
+            1. ✅ Validate your submission
+            2. 🤖 Run 4 specialized AI reviewers
+            3. 📊 Synthesize results
+            4. 📝 Post review feedback here
+
+            **Expected timeline:** 1-2 hours after PDF upload
+
+            ---
+            *This is an automated message from the Agentic Journal submission system.*
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+            // Add waiting-for-pdf label
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['waiting-for-pdf']
+            });
+
+  # When a comment is added with a PDF, process the submission
+  process-pdf:
+    name: Process PDF Upload
+    if: github.event_name == 'issue_comment' && contains(github.event.issue.labels.*.name, 'submission')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for PDF attachment
+        id: check-pdf
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+
+            // Look for PDF attachment in comment
+            // GitHub attachment format: ![filename](url) or [filename](url)
+            const pdfMatch = comment.match(/\[([^\]]+\.pdf)\]\((https:\/\/github\.com\/[^)]+)\)/i) ||
+                            comment.match(/\(https:\/\/github\.com\/user-attachments\/[^)]+\.pdf[^)]*\)/i);
+
+            if (pdfMatch) {
+              // Extract URL - handle different formats
+              let pdfUrl = pdfMatch[0].match(/\((https:\/\/[^)]+)\)/);
+              if (pdfUrl) {
+                core.setOutput('has_pdf', 'true');
+                core.setOutput('pdf_url', pdfUrl[1]);
+                console.log('Found PDF:', pdfUrl[1]);
+              } else {
+                core.setOutput('has_pdf', 'false');
+              }
+            } else {
+              core.setOutput('has_pdf', 'false');
+              console.log('No PDF found in comment');
+            }
+
+      - name: Checkout
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Extract submission metadata
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        id: metadata
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get the issue body
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const body = issue.data.body;
+
+            // Extract submission ID
+            const idMatch = body.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+            const submissionId = idMatch ? idMatch[1] : `AJ-${Date.now().toString(36).toUpperCase()}`;
+
+            // Extract title
+            const titleMatch = body.match(/\*\*Title:\*\* (.+)/);
+            const title = titleMatch ? titleMatch[1].trim() : issue.data.title.replace('[Submission] ', '');
+
+            core.setOutput('submission_id', submissionId);
+            core.setOutput('title', title);
+            console.log('Submission ID:', submissionId);
+            console.log('Title:', title);
+
+      - name: Download PDF
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        run: |
+          mkdir -p submissions/${{ steps.metadata.outputs.submission_id }}
+          curl -L "${{ steps.check-pdf.outputs.pdf_url }}" -o submissions/${{ steps.metadata.outputs.submission_id }}/paper.pdf
+          echo "PDF downloaded successfully"
+          ls -la submissions/${{ steps.metadata.outputs.submission_id }}/
+
+      - name: Create metadata.yaml
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const body = issue.data.body;
+            const submissionId = '${{ steps.metadata.outputs.submission_id }}';
+
+            // Parse metadata from issue body
+            const titleMatch = body.match(/\*\*Title:\*\* (.+)/);
+            const typeMatch = body.match(/\*\*Type:\*\* (\w+)/);
+            const authorsMatch = body.match(/\*\*Authors:\*\* (.+)/);
+            const abstractMatch = body.match(/### Abstract\n([\s\S]*?)(?=\n###|$)/);
+            const keywordsMatch = body.match(/### Keywords\n(.+)/);
+
+            const metadata = {
+              title: titleMatch ? titleMatch[1].trim() : 'Untitled',
+              paper_type: typeMatch ? typeMatch[1].toLowerCase() : 'research',
+              authors: [],
+              abstract: abstractMatch ? abstractMatch[1].trim() : '',
+              keywords: keywordsMatch ? keywordsMatch[1].split(',').map(k => k.trim()) : []
+            };
+
+            // Parse authors
+            if (authorsMatch) {
+              const authorNames = authorsMatch[1].split(',').map(a => a.trim());
+              metadata.authors = authorNames.map(name => ({ name, email: '', affiliation: '' }));
+            }
+
+            // Write metadata file
+            const yaml = require('js-yaml');
+            const yamlContent = yaml.dump(metadata);
+            fs.writeFileSync(`submissions/${submissionId}/metadata.yaml`, yamlContent);
+            console.log('Metadata created:', yamlContent);
+
+      - name: Update issue status
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const submissionId = '${{ steps.metadata.outputs.submission_id }}';
+
+            // Remove waiting-for-pdf, add processing
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'waiting-for-pdf'
+              });
+            } catch (e) {}
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['processing']
+            });
+
+            // Post status update
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🚀 Processing Started!
+
+              **Submission ID:** ${submissionId}
+
+              Your PDF has been received and the review process is starting.
+
+              | Stage | Status |
+              |-------|--------|
+              | PDF Received | ✅ Complete |
+              | Validation | 🔄 In Progress |
+              | Agent Reviews | ⏳ Pending |
+              | Meta-Review | ⏳ Pending |
+
+              We'll update this issue with results as each stage completes.
+              `
+            });
+
+      - name: Run validation
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        id: validate
+        continue-on-error: true
+        run: |
+          python scripts/validate_submission.py
+        env:
+          SUBMISSION_ID: ${{ steps.metadata.outputs.submission_id }}
+
+      - name: Run reviews
+        if: steps.check-pdf.outputs.has_pdf == 'true' && steps.validate.outcome == 'success'
+        run: |
+          for agent in technical domain ethics clarity; do
+            echo "Running $agent review..."
+            python scripts/run_review.py --agent $agent || true
+          done
+        env:
+          SUBMISSION_ID: ${{ steps.metadata.outputs.submission_id }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Run meta-review
+        if: steps.check-pdf.outputs.has_pdf == 'true' && steps.validate.outcome == 'success'
+        id: meta
+        run: python scripts/synthesize_reviews.py
+        env:
+          SUBMISSION_ID: ${{ steps.metadata.outputs.submission_id }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Post review results
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const yaml = require('js-yaml');
+            const submissionId = '${{ steps.metadata.outputs.submission_id }}';
+
+            let reviewComment = '';
+
+            try {
+              // Load meta-review
+              const metaReview = yaml.load(fs.readFileSync(`reviews/${submissionId}/meta-review.yaml`, 'utf8'));
+
+              const decision = metaReview.decision?.toUpperCase() || 'PENDING';
+              const emoji = {
+                'ACCEPT': '✅',
+                'MINOR_REVISION': '📝',
+                'MAJOR_REVISION': '🔄',
+                'REJECT': '❌'
+              }[decision] || '⏳';
+
+              const synthesis = metaReview.synthesis || {};
+
+              reviewComment = `## ${emoji} Review Complete: ${decision}
+
+              **Submission ID:** ${submissionId}
+              **Weighted Score:** ${synthesis.weighted_average?.toFixed(1) || 'N/A'}/5.0
+
+              ### Score Breakdown
+
+              | Agent | Score |
+              |-------|-------|
+              | Technical | ${synthesis.score_breakdown?.technical?.toFixed(1) || 'N/A'} |
+              | Domain | ${synthesis.score_breakdown?.domain?.toFixed(1) || 'N/A'} |
+              | Ethics | ${synthesis.score_breakdown?.ethics?.toFixed(1) || 'N/A'} |
+              | Clarity | ${synthesis.score_breakdown?.clarity?.toFixed(1) || 'N/A'} |
+
+              ### Decision Rationale
+
+              ${metaReview.rationale || 'No rationale provided.'}
+
+              ${metaReview.author_action_items?.length ? `
+              ### Action Items
+
+              ${metaReview.author_action_items.map(item =>
+                `- **[${item.priority}]** ${item.action}`
+              ).join('\n')}
+              ` : ''}
+
+              ---
+
+              *Review generated by Agentic Journal's multi-agent peer review system.*
+
+              [View on Dashboard](https://akz4ol.github.io/agentic-journal/dashboard/)
+              `;
+
+            } catch (error) {
+              reviewComment = `## ⚠️ Review Processing Issue
+
+              There was an issue processing the review. Please check the workflow logs.
+
+              Error: ${error.message}
+              `;
+            }
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: reviewComment
+            });
+
+            // Update labels
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'processing'
+              });
+            } catch (e) {}
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['completed']
+            });
+
+      - name: Commit reviews
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📄 Add submission ${{ steps.metadata.outputs.submission_id }}"
+          file_pattern: "submissions/** reviews/**"
