@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+_site/
+.jekyll-cache/
+.jekyll-metadata
+
+# Local test submissions (keep templates)
+submissions/test-*
+!submissions/SUBMISSION_TEMPLATE/
+
+# Local reviews (except sample)
+reviews/test-*
+
+# Secrets
+.env
+*.key
