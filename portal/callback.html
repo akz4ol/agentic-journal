@@ -5,7 +5,7 @@ title: Authenticating...
 
 <div class="callback-container">
   <div class="spinner"></div>
-  <p>Authenticating with GitHub...</p>
+  <p id="status-text">Authenticating with GitHub...</p>
 </div>
 
 <style>
@@ -28,60 +28,95 @@ title: Authenticating...
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+.error-box {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary-color);
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  margin-top: 1rem;
+}
 </style>
 
 <script>
-// Handle OAuth callback
-// Note: In production, you'd use a backend to exchange the code for a token
-// For GitHub Pages, we'll use a serverless function or direct token flow
+// OAuth token exchange worker URL
+// Deploy the worker from docs/oauth-worker.js and update this URL
+const OAUTH_WORKER_URL = 'https://agentic-journal-oauth.YOUR-SUBDOMAIN.workers.dev';
 
 document.addEventListener('DOMContentLoaded', async function() {
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
+  const container = document.querySelector('.callback-container');
+  const statusText = document.getElementById('status-text');
 
   if (code) {
     try {
-      // In production, exchange code via backend
-      // For demo, we'll redirect to a token exchange service
-      // You would set up a Cloudflare Worker, Netlify Function, or similar
+      statusText.textContent = 'Exchanging authorization code...';
 
-      // For now, show instructions
-      document.querySelector('.callback-container').innerHTML = `
-        <h2>Setup Required</h2>
-        <p>To complete OAuth setup, you need to configure a token exchange service.</p>
-        <p>See the <a href="/agentic-journal/docs/oauth-setup/">OAuth Setup Guide</a> for instructions.</p>
-        <p><a href="/agentic-journal/portal/" class="btn btn-primary">Return to Portal</a></p>
-      `;
+      // Check if worker is configured
+      if (OAUTH_WORKER_URL.includes('YOUR-SUBDOMAIN')) {
+        // Worker not configured - show setup instructions
+        container.innerHTML = `
+          <h2>OAuth Setup Required</h2>
+          <p>To complete GitHub authentication, deploy the OAuth worker:</p>
+          <ol style="text-align: left; max-width: 500px; margin: 1rem auto;">
+            <li>Go to <a href="https://dash.cloudflare.com/" target="_blank">Cloudflare Dashboard</a></li>
+            <li>Create a new Worker</li>
+            <li>Copy code from <code>docs/oauth-worker.js</code></li>
+            <li>Add secret: <code>GITHUB_CLIENT_SECRET</code></li>
+            <li>Deploy and update <code>OAUTH_WORKER_URL</code> in callback.html</li>
+          </ol>
+          <a href="/agentic-journal/portal/" class="btn">Return to Portal</a>
+        `;
+        return;
+      }
+
+      // Exchange code for token via worker
+      const response = await fetch(OAUTH_WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // Store token and user
+      localStorage.setItem('github_token', data.access_token);
+      localStorage.setItem('github_user', JSON.stringify(data.user));
+
+      statusText.textContent = 'Success! Redirecting...';
+
+      // Redirect to portal
+      setTimeout(() => {
+        window.location.href = '/agentic-journal/portal/';
+      }, 500);
 
     } catch (error) {
       console.error('Auth error:', error);
-      document.querySelector('.callback-container').innerHTML = `
+      container.innerHTML = `
         <h2>Authentication Failed</h2>
-        <p>${error.message}</p>
-        <a href="/agentic-journal/portal/" class="btn btn-primary">Try Again</a>
+        <div class="error-box">${error.message}</div>
+        <a href="/agentic-journal/portal/" class="btn">Try Again</a>
       `;
     }
   } else {
-    // Check for token in hash (implicit flow)
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    const accessToken = hashParams.get('access_token');
-
-    if (accessToken) {
-      // Get user info
-      const userResponse = await fetch('https://api.github.com/user', {
-        headers: { 'Authorization': `token ${accessToken}` }
-      });
-      const user = await userResponse.json();
-
-      // Store token and user
-      localStorage.setItem('github_token', accessToken);
-      localStorage.setItem('github_user', JSON.stringify(user));
-
-      // Redirect to portal
-      window.location.href = '/agentic-journal/portal/';
-    } else {
-      window.location.href = '/agentic-journal/portal/';
-    }
+    // No code - redirect to portal
+    window.location.href = '/agentic-journal/portal/';
   }
 });
 </script>
