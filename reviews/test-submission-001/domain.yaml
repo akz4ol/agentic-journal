@@ -1,0 +1,74 @@
+confidence: high
+evaluation:
+  contribution_statement: 'The paper systematically identifies and addresses fundamental
+    flaws in current AI agent benchmarking, proposing cost-controlled evaluation methods
+    and providing frameworks for preventing shortcuts and improving reproducibility.
+
+    '
+  missing_related_work:
+  - Efficient NLP and green AI literature on computational costs
+  - Economic analysis of ML system deployment costs
+  - Multi-objective optimization in machine learning
+  - Broader ML evaluation methodology and meta-evaluation work
+  novelty_assessment:
+    actual_novelty: The cost-controlled evaluation perspective and joint optimization
+      approach are genuinely novel. The systematic analysis of shortcuts and reproducibility
+      issues provides valuable new insights, though individual components build on
+      known ML evaluation principles.
+    claimed_novelty: First systematic analysis of agent evaluation shortcomings, cost-controlled
+      evaluation methods, joint optimization of cost and accuracy, and taxonomy of
+      benchmark generality levels
+    prior_work_doing_similar:
+    - paper: HELM framework for LLM evaluation
+      relationship: Addresses standardization for LLMs but not agents specifically
+    - paper: General ML benchmarking best practices literature
+      relationship: Covers overfitting and holdouts but not agent-specific challenges
+  questions_for_authors:
+  - How would the joint optimization approach scale to more complex multi-step agent
+    tasks beyond question answering?
+  - What specific mechanisms do you propose for keeping holdout sets secret while
+    enabling reproducible evaluation?
+  - Could you provide more detailed guidance on when to use each level of generality
+    in benchmark design?
+  significance_assessment:
+    practical_impact: Could significantly change how agents are evaluated and developed,
+      with immediate relevance for cost-conscious deployment decisions
+    target_audience: AI agent researchers, benchmark developers, downstream practitioners
+      making procurement decisions
+    theoretical_impact: Provides frameworks for thinking about evaluation generality
+      levels and cost-accuracy tradeoffs that could influence future benchmark design
+  strengths:
+  - First comprehensive analysis of agent evaluation shortcomings across multiple
+    benchmarks and SOTA agents
+  - Strong empirical work showing simple baselines outperform complex agents on HumanEval
+    when controlling for cost
+  - Practical joint optimization framework demonstrating 40-53% cost reduction while
+    maintaining accuracy
+  - Valuable distinction between model evaluation vs downstream evaluation needs with
+    concrete examples
+  - Thorough reproducibility analysis revealing concerning issues across multiple
+    benchmarks
+  - Clear taxonomy of generality levels with appropriate holdout requirements
+  summary: 'This paper provides the first systematic analysis of critical shortcomings
+    in AI agent evaluation practices, demonstrating that current benchmarks focus
+    too narrowly on accuracy while ignoring costs, enable shortcuts through inadequate
+    holdouts, and suffer from poor reproducibility. The work is timely and well-executed,
+    offering both empirical evidence and practical frameworks for improving agent
+    evaluation.
+
+    '
+  weaknesses:
+  - Joint optimization only evaluated on one task (HotPotQA) - broader evaluation
+    would strengthen the claims
+  - Cost evaluation challenges (model price changes, provider differences) acknowledged
+    but not fully addressed
+  - Limited engagement with broader cost-aware ML and green AI literature
+  - Some reproducibility issues were predictable given the field's nascency
+expertise_level: expert
+recommendation: accept
+scores:
+  evidence_quality: 4
+  literature_coverage: 4
+  novelty: 4
+  overall: 4.0
+  significance: 4

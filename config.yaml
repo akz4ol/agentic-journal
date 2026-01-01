@@ -12,13 +12,13 @@ rate_limits:
 
 review:
   model: "claude-sonnet-4-20250514"
-  max_tokens: 8192  # Increased for detailed reviews
+  max_tokens: 16000  # Must be > thinking budget
   temperature: 0.3
 
-  # Extended thinking for thorough analysis (requires compatible model)
+  # Extended thinking for thorough analysis
   extended_thinking:
     enabled: true
-    budget_tokens: 10000  # Internal reasoning budget
+    budget_tokens: 8000  # Internal reasoning budget (must be < max_tokens)
 
   agents:
     technical:
@@ -62,7 +62,7 @@ review:
 screening:
   plagiarism_threshold: 0.15
   min_pages: 4
-  max_pages: 15
+  max_pages: 50  # Increased for longer papers
   min_abstract_words: 100
   max_abstract_words: 300
   required_sections:

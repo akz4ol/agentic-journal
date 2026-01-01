@@ -1,0 +1,87 @@
+---
+layout: default
+title: Authenticating...
+---
+
+<div class="callback-container">
+  <div class="spinner"></div>
+  <p>Authenticating with GitHub...</p>
+</div>
+
+<style>
+.callback-container {
+  text-align: center;
+  padding: 4rem;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+// Handle OAuth callback
+// Note: In production, you'd use a backend to exchange the code for a token
+// For GitHub Pages, we'll use a serverless function or direct token flow
+
+document.addEventListener('DOMContentLoaded', async function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+
+  if (code) {
+    try {
+      // In production, exchange code via backend
+      // For demo, we'll redirect to a token exchange service
+      // You would set up a Cloudflare Worker, Netlify Function, or similar
+
+      // For now, show instructions
+      document.querySelector('.callback-container').innerHTML = `
+        <h2>Setup Required</h2>
+        <p>To complete OAuth setup, you need to configure a token exchange service.</p>
+        <p>See the <a href="/agentic-journal/docs/oauth-setup/">OAuth Setup Guide</a> for instructions.</p>
+        <p><a href="/agentic-journal/portal/" class="btn btn-primary">Return to Portal</a></p>
+      `;
+
+    } catch (error) {
+      console.error('Auth error:', error);
+      document.querySelector('.callback-container').innerHTML = `
+        <h2>Authentication Failed</h2>
+        <p>${error.message}</p>
+        <a href="/agentic-journal/portal/" class="btn btn-primary">Try Again</a>
+      `;
+    }
+  } else {
+    // Check for token in hash (implicit flow)
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken = hashParams.get('access_token');
+
+    if (accessToken) {
+      // Get user info
+      const userResponse = await fetch('https://api.github.com/user', {
+        headers: { 'Authorization': `token ${accessToken}` }
+      });
+      const user = await userResponse.json();
+
+      // Store token and user
+      localStorage.setItem('github_token', accessToken);
+      localStorage.setItem('github_user', JSON.stringify(user));
+
+      // Redirect to portal
+      window.location.href = '/agentic-journal/portal/';
+    } else {
+      window.location.href = '/agentic-journal/portal/';
+    }
+  }
+});
+</script>

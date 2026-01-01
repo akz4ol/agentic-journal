@@ -34,12 +34,10 @@ nav:
     url: /
   - title: Papers
     url: /papers/
-  - title: Preprints
-    url: /preprints/
   - title: Submit
-    url: /submit/
-  - title: Review Process
-    url: /about/review-process/
+    url: /portal/
+  - title: Dashboard
+    url: /dashboard/
   - title: About
     url: /about/
 

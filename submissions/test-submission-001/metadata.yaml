@@ -1,0 +1,44 @@
+title: "AI Agents That Matter"
+
+authors:
+  - name: "Sayash Kapoor"
+    email: "sayashk@princeton.edu"
+    affiliation: "Princeton University"
+  - name: "Benedikt Stroebl"
+    email: "bstroebl@princeton.edu"
+    affiliation: "Princeton University"
+  - name: "Zachary S. Siegel"
+    email: "zsiegel@princeton.edu"
+    affiliation: "Princeton University"
+  - name: "Nitarshan Rajkumar"
+    email: "nitarshan@cam.ac.uk"
+    affiliation: "University of Cambridge"
+  - name: "Arvind Narayanan"
+    email: "arvindn@princeton.edu"
+    affiliation: "Princeton University"
+
+abstract: |
+  AI agents are an exciting new research direction, and agent benchmarks
+  have been driving progress. However, our analysis reveals several
+  shortcomings of current benchmarks that hinder their usefulness in
+  real-world applications. First, there is a narrow focus on accuracy
+  without attention to other metrics, such as cost. As a result,
+  state-of-the-art agents are needlessly complex and costly. Second,
+  shortcuts used to technically accomplish tasks do not reflect how
+  end users would use these agents, leading to findings that fail to
+  generalize. Third, there is significant overfitting on benchmarks,
+  raising doubts about whether improvements on benchmarks correspond
+  to improvements on real tasks. We discuss solutions to these problems
+  and call for more holistic evaluation of AI agents.
+
+keywords:
+  - AI agents
+  - benchmarks
+  - evaluation
+  - language models
+  - real-world applications
+
+paper_type: research
+
+data_availability: |
+  Analysis code and data available at https://github.com/benediktstroebl/agent-eval

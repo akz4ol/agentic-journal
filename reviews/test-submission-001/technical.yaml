@@ -1,0 +1,63 @@
+confidence: high
+evaluation:
+  missing_experiments:
+  - Evaluation of cost-accuracy tradeoffs on additional benchmarks beyond HumanEval
+    and HotPotQA
+  - Comparison with more sophisticated joint optimization approaches
+  - Analysis of how holdout set design affects different agent architectures
+  questions_for_authors:
+  - How do the cost-accuracy tradeoffs change for more complex multi-step reasoning
+    tasks beyond HumanEval?
+  - What would joint optimization results look like with more sophisticated optimization
+    methods beyond simple parameter search?
+  - How generalizable are the reproducibility issues found - is this systematic across
+    the broader agent evaluation landscape?
+  strengths:
+  - Strong empirical demonstration that cost-controlled evaluation changes conclusions
+    about agent performance (Section 2, Figure 1)
+  - Clear identification of the model vs. downstream evaluation distinction with concrete
+    NovelQA case study (Section 4)
+  - Comprehensive documentation of reproducibility issues across multiple benchmark
+    implementations (Section 6, Table A6)
+  - Practical joint optimization approach showing 41-53% cost reduction while maintaining
+    accuracy (Section 3)
+  - Thorough survey of 17 agent benchmarks revealing systematic holdout set inadequacies
+    (Table A4)
+  summary: 'This paper addresses critical issues in AI agent benchmarking by demonstrating
+    that current evaluation practices overemphasize accuracy while ignoring cost,
+    lack proper holdout sets, and suffer from reproducibility issues. The authors
+    provide solid empirical evidence showing that simple baselines can match complex
+    "state-of-the-art" agents at much lower cost, and propose practical solutions
+    for more rigorous agent evaluation.
+
+    '
+  technical_errors:
+  - issue: Claims about non-determinism at temperature=0 need better documentation/verification
+    location: Section 2.3
+    severity: minor
+    suggestion: Provide more rigorous analysis of temperature=0 stochasticity
+  weaknesses:
+  - Limited experimental scope - analysis primarily focuses on HumanEval with limited
+    evaluation on other benchmarks
+  - Some experiments underpowered due to cost constraints (single runs for NovelQA,
+    only 5 runs for others)
+  - Joint optimization approach is relatively simple and may not generalize to more
+    complex optimization landscapes
+  - Cost analysis depends on time-specific API pricing, though authors provide web
+    interface to address this
+  - Agent definition and generality taxonomy (Section 5) could be more rigorously
+    formalized
+expertise_level: expert
+recommendation: minor_revision
+reproducibility_assessment:
+  can_replicate: true
+  code_available: true
+  data_available: true
+  missing_details:
+  - Some hyperparameter choices for joint optimization not fully specified
+scores:
+  methodology: 4
+  overall: 4.0
+  reproducibility: 4
+  technical_accuracy: 4
+  validity: 4

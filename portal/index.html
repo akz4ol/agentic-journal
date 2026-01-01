@@ -1,0 +1,574 @@
+---
+layout: default
+title: Submission Portal
+---
+
+<div class="portal-container">
+  <div class="portal-header">
+    <h1>Paper Submission Portal</h1>
+    <p>Submit your research for AI-powered peer review</p>
+  </div>
+
+  <!-- Login Section -->
+  <div id="auth-section" class="auth-section">
+    <div class="login-box">
+      <h2>Sign In to Submit</h2>
+      <p>Connect with GitHub to submit papers and track your reviews.</p>
+      <button id="github-login" class="btn btn-github">
+        <svg height="20" width="20" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        Sign in with GitHub
+      </button>
+    </div>
+  </div>
+
+  <!-- Submission Form (hidden until logged in) -->
+  <div id="submission-section" class="submission-section" style="display: none;">
+    <div class="user-info">
+      <img id="user-avatar" src="" alt="Avatar" class="avatar">
+      <span id="user-name"></span>
+      <button id="logout-btn" class="btn btn-small">Sign Out</button>
+    </div>
+
+    <form id="submission-form" class="submission-form">
+      <div class="form-section">
+        <h3>Paper Details</h3>
+
+        <div class="form-group">
+          <label for="title">Paper Title *</label>
+          <input type="text" id="title" name="title" required placeholder="Enter your paper title">
+        </div>
+
+        <div class="form-group">
+          <label for="paper_type">Paper Type *</label>
+          <select id="paper_type" name="paper_type" required>
+            <option value="">Select type...</option>
+            <option value="research">Research Paper</option>
+            <option value="technical">Technical Report</option>
+            <option value="survey">Survey Article</option>
+            <option value="position">Position Paper</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="abstract">Abstract * (150-300 words)</label>
+          <textarea id="abstract" name="abstract" required rows="6"
+                    placeholder="Provide a clear summary of your research..."></textarea>
+          <span class="word-count">Words: <span id="abstract-count">0</span>/300</span>
+        </div>
+
+        <div class="form-group">
+          <label for="keywords">Keywords * (comma-separated)</label>
+          <input type="text" id="keywords" name="keywords" required
+                 placeholder="e.g., machine learning, neural networks, NLP">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Authors</h3>
+        <div id="authors-container">
+          <div class="author-entry">
+            <input type="text" name="author_name_1" placeholder="Name *" required>
+            <input type="email" name="author_email_1" placeholder="Email *" required>
+            <input type="text" name="author_affiliation_1" placeholder="Affiliation">
+          </div>
+        </div>
+        <button type="button" id="add-author" class="btn btn-small">+ Add Author</button>
+      </div>
+
+      <div class="form-section">
+        <h3>Manuscript Upload</h3>
+        <div class="form-group">
+          <label for="pdf">Paper PDF * (max 50MB)</label>
+          <div class="file-upload">
+            <input type="file" id="pdf" name="pdf" accept=".pdf" required>
+            <div class="file-upload-text">
+              <span class="upload-icon">📄</span>
+              <span>Drop PDF here or click to browse</span>
+            </div>
+            <div id="file-info" class="file-info"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Optional Information</h3>
+
+        <div class="form-group">
+          <label for="code_url">Code Repository URL</label>
+          <input type="url" id="code_url" name="code_url" placeholder="https://github.com/...">
+        </div>
+
+        <div class="form-group">
+          <label for="data_url">Data URL</label>
+          <input type="url" id="data_url" name="data_url" placeholder="https://...">
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="confirm_original" required>
+            I confirm this work is original and not under review elsewhere *
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="accept_terms" required>
+            I accept the <a href="/agentic-journal/about/terms/" target="_blank">Terms of Service</a> *
+          </label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="submit-btn" class="btn btn-primary btn-large">
+          Submit for Review
+        </button>
+      </div>
+    </form>
+
+    <div id="submission-status" class="submission-status" style="display: none;">
+      <div class="status-content">
+        <div class="spinner"></div>
+        <p id="status-message">Uploading your submission...</p>
+      </div>
+    </div>
+
+    <div id="submission-success" class="submission-success" style="display: none;">
+      <div class="success-content">
+        <span class="success-icon">✓</span>
+        <h3>Submission Received!</h3>
+        <p>Your paper has been submitted for review.</p>
+        <p><strong>Submission ID:</strong> <span id="submission-id"></span></p>
+        <p>You will receive review results within 24-48 hours.</p>
+        <a href="/agentic-journal/dashboard/" class="btn btn-primary">View Dashboard</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.portal-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.portal-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.portal-header h1 {
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+.auth-section {
+  text-align: center;
+  padding: 3rem;
+}
+
+.login-box {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 3rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.btn-github {
+  background: #24292e;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-github:hover {
+  background: #1a1e22;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.submission-form {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #eee;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.form-section h3 {
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="url"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+.word-count {
+  font-size: 0.85rem;
+  color: #666;
+  text-align: right;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.author-entry {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.file-upload {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  position: relative;
+}
+
+.file-upload:hover {
+  border-color: var(--primary-color);
+}
+
+.file-upload input[type="file"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.upload-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.file-info {
+  margin-top: 1rem;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.form-actions {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-large {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+}
+
+.btn-small {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  background: #eee;
+}
+
+.submission-status,
+.submission-success {
+  text-align: center;
+  padding: 3rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--primary-color);
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.success-icon {
+  display: inline-block;
+  width: 60px;
+  height: 60px;
+  background: #28a745;
+  color: white;
+  border-radius: 50%;
+  font-size: 2rem;
+  line-height: 60px;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+  .author-entry {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<script>
+// GitHub OAuth Configuration
+const CLIENT_ID = 'YOUR_GITHUB_CLIENT_ID'; // Replace with actual client ID
+const REDIRECT_URI = window.location.origin + '/agentic-journal/portal/callback.html';
+const REPO_OWNER = 'akz4ol';
+const REPO_NAME = 'agentic-journal';
+
+// Check for existing session
+document.addEventListener('DOMContentLoaded', function() {
+  const token = localStorage.getItem('github_token');
+  const user = JSON.parse(localStorage.getItem('github_user') || 'null');
+
+  if (token && user) {
+    showSubmissionForm(user);
+  }
+
+  // Setup event listeners
+  setupEventListeners();
+});
+
+function setupEventListeners() {
+  // GitHub Login
+  document.getElementById('github-login').addEventListener('click', function() {
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=repo`;
+    window.location.href = authUrl;
+  });
+
+  // Logout
+  document.getElementById('logout-btn').addEventListener('click', function() {
+    localStorage.removeItem('github_token');
+    localStorage.removeItem('github_user');
+    location.reload();
+  });
+
+  // Abstract word count
+  document.getElementById('abstract').addEventListener('input', function() {
+    const words = this.value.trim().split(/\s+/).filter(w => w).length;
+    document.getElementById('abstract-count').textContent = words;
+
+    if (words < 150 || words > 300) {
+      this.style.borderColor = '#dc3545';
+    } else {
+      this.style.borderColor = '#28a745';
+    }
+  });
+
+  // Add author
+  let authorCount = 1;
+  document.getElementById('add-author').addEventListener('click', function() {
+    authorCount++;
+    const container = document.getElementById('authors-container');
+    const entry = document.createElement('div');
+    entry.className = 'author-entry';
+    entry.innerHTML = `
+      <input type="text" name="author_name_${authorCount}" placeholder="Name">
+      <input type="email" name="author_email_${authorCount}" placeholder="Email">
+      <input type="text" name="author_affiliation_${authorCount}" placeholder="Affiliation">
+    `;
+    container.appendChild(entry);
+  });
+
+  // File upload display
+  document.getElementById('pdf').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      document.getElementById('file-info').textContent = `${file.name} (${sizeMB} MB)`;
+    }
+  });
+
+  // Form submission
+  document.getElementById('submission-form').addEventListener('submit', handleSubmission);
+}
+
+function showSubmissionForm(user) {
+  document.getElementById('auth-section').style.display = 'none';
+  document.getElementById('submission-section').style.display = 'block';
+  document.getElementById('user-avatar').src = user.avatar_url;
+  document.getElementById('user-name').textContent = user.login;
+}
+
+async function handleSubmission(e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const formData = new FormData(form);
+  const token = localStorage.getItem('github_token');
+
+  // Show loading
+  document.getElementById('submission-form').style.display = 'none';
+  document.getElementById('submission-status').style.display = 'block';
+
+  try {
+    // Generate submission ID
+    const submissionId = `AJ-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
+
+    // Collect form data
+    const title = formData.get('title');
+    const abstract = formData.get('abstract');
+    const paperType = formData.get('paper_type');
+    const keywords = formData.get('keywords').split(',').map(k => k.trim());
+
+    // Collect authors
+    const authors = [];
+    let i = 1;
+    while (formData.get(`author_name_${i}`)) {
+      if (formData.get(`author_name_${i}`).trim()) {
+        authors.push({
+          name: formData.get(`author_name_${i}`),
+          email: formData.get(`author_email_${i}`),
+          affiliation: formData.get(`author_affiliation_${i}`) || ''
+        });
+      }
+      i++;
+    }
+
+    // Create metadata
+    const metadata = {
+      title,
+      authors,
+      abstract,
+      keywords,
+      paper_type: paperType,
+      code_url: formData.get('code_url') || null,
+      data_url: formData.get('data_url') || null,
+      submitted_at: new Date().toISOString()
+    };
+
+    // Create GitHub issue for submission tracking
+    document.getElementById('status-message').textContent = 'Creating submission...';
+
+    const issueBody = `## New Paper Submission
+
+**Submission ID:** ${submissionId}
+**Title:** ${title}
+**Type:** ${paperType}
+**Authors:** ${authors.map(a => a.name).join(', ')}
+
+### Abstract
+${abstract}
+
+### Keywords
+${keywords.join(', ')}
+
+---
+*Submitted via Agentic Journal Portal*
+`;
+
+    const issueResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: `[Submission] ${title}`,
+        body: issueBody,
+        labels: ['submission', paperType]
+      })
+    });
+
+    if (!issueResponse.ok) {
+      throw new Error('Failed to create submission');
+    }
+
+    // Store submission locally
+    const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
+    submissions.push({
+      id: submissionId,
+      title,
+      status: 'pending',
+      submitted_at: new Date().toISOString()
+    });
+    localStorage.setItem('submissions', JSON.stringify(submissions));
+
+    // Show success
+    document.getElementById('submission-status').style.display = 'none';
+    document.getElementById('submission-success').style.display = 'block';
+    document.getElementById('submission-id').textContent = submissionId;
+
+  } catch (error) {
+    console.error('Submission error:', error);
+    document.getElementById('status-message').textContent = 'Error: ' + error.message;
+  }
+}
+</script>
