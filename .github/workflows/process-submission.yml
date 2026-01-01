@@ -27,37 +27,35 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Get the content to check (issue body or comment)
-            let content = '';
-            if (context.eventName === 'issues') {
-              content = context.payload.issue.body || '';
-            } else {
-              content = context.payload.comment.body || '';
-            }
+            // Check both issue body and comment for PDF (comment may just be a trigger)
+            const issueBody = context.payload.issue.body || '';
+            const commentBody = context.eventName === 'issue_comment' ? (context.payload.comment.body || '') : '';
 
-            console.log('Checking content for PDF...');
+            console.log('Event type:', context.eventName);
+            console.log('Checking issue body and comment for PDF...');
 
             // Look for PDF attachment - GitHub uses various formats
-            // Format 1: [filename.pdf](https://github.com/user-attachments/...)
-            // Format 2: ![filename](https://github.com/user-attachments/...)
             const patterns = [
-              /\[([^\]]*\.pdf)\]\((https:\/\/github\.com\/user-attachments\/assets\/[^)]+)\)/gi,
-              /\[([^\]]*)\]\((https:\/\/github\.com\/user-attachments\/assets\/[^)]+\.pdf[^)]*)\)/gi,
+              /\[([^\]]*\.pdf)\]\((https:\/\/github\.com\/user-attachments\/[^)]+)\)/gi,
+              /\[([^\]]*)\]\((https:\/\/github\.com\/user-attachments\/[^)]+\.pdf[^)]*)\)/gi,
+              /(https:\/\/github\.com\/user-attachments\/files\/[a-f0-9\/\-\.]+)/gi,
               /(https:\/\/github\.com\/user-attachments\/assets\/[a-f0-9-]+)/gi
             ];
 
-            let pdfUrl = null;
-            for (const pattern of patterns) {
-              const match = content.match(pattern);
-              if (match) {
-                // Extract the URL
-                const urlMatch = match[0].match(/(https:\/\/github\.com\/user-attachments\/assets\/[a-f0-9-]+)/);
-                if (urlMatch) {
-                  pdfUrl = urlMatch[1];
-                  break;
+            function findPdfUrl(content) {
+              for (const pattern of patterns) {
+                pattern.lastIndex = 0;
+                const match = content.match(pattern);
+                if (match) {
+                  const urlMatch = match[0].match(/(https:\/\/github\.com\/user-attachments\/[^\s\)]+)/);
+                  if (urlMatch) return urlMatch[1];
                 }
               }
+              return null;
             }
+
+            // Check comment first (in case user attached PDF in comment), then issue body
+            let pdfUrl = findPdfUrl(commentBody) || findPdfUrl(issueBody);
 
             if (pdfUrl) {
               core.setOutput('has_pdf', 'true');
