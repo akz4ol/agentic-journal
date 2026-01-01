@@ -1,0 +1,66 @@
+confidence: high
+evaluation:
+  missing_experiments:
+  - Evaluation on more complex agent benchmarks (e.g., multi-day software engineering
+    tasks) to test generalizability
+  - Comparison of joint optimization approach against more sophisticated multi-objective
+    optimization methods
+  questions_for_authors:
+  - How would the cost-accuracy tradeoffs change for more complex multi-step reasoning
+    tasks beyond HumanEval?
+  - Could you provide theoretical analysis of when simple retry strategies should
+    outperform complex agent architectures?
+  - How sensitive are the joint optimization results to the choice of hyperparameter
+    optimizer (Optuna vs others)?
+  strengths:
+  - Strong empirical methodology with multiple trials (5 runs) and proper error reporting
+    across HumanEval, HotPotQA, and other benchmarks
+  - Compelling demonstration that simple baselines (retry, warming, escalation) match
+    SOTA agents at fraction of the cost on HumanEval
+  - Practical joint optimization showing 41-53% cost reduction while maintaining accuracy
+    on HotPotQA
+  - Valuable documentation of reproducibility issues across multiple published agents
+    with specific examples
+  - Well-motivated distinction between model evaluation and downstream evaluation
+    needs
+  summary: 'This paper provides a thorough empirical analysis of current AI agent
+    evaluation practices, identifying significant shortcomings in cost consideration,
+    holdout design, and reproducibility. The work makes solid empirical contributions
+    with practical recommendations, though the technical novelty is limited. The experimental
+    methodology is sound with appropriate baselines and statistical analysis across
+    multiple benchmarks.
+
+    '
+  technical_errors:
+  - issue: Pareto frontier convexity constraint could be explained more clearly -
+      the linear interpolation argument assumes agents can be probabilistically mixed
+    location: Section A.1
+    severity: minor
+    suggestion: Add explicit explanation that convex hull represents achievable performance
+      via randomized strategies
+  weaknesses:
+  - Limited benchmark coverage - findings may not generalize to more complex agent
+    applications beyond coding/QA tasks
+  - Joint optimization approach is relatively simple (Optuna parameter search) - more
+    sophisticated methods could likely achieve better results
+  - Some overgeneralization from specific examples to broad claims about 'agent benchmarks'
+    in general
+  - Cost measurements are API-provider dependent and time-dependent, limiting long-term
+    reproducibility
+  - Benchmark generality categorization in Table 1 involves subjective judgments that
+    could be debatable
+expertise_level: expert
+recommendation: minor_revision
+reproducibility_assessment:
+  can_replicate: true
+  code_available: true
+  data_available: true
+  missing_details:
+  - Exact Azure OpenAI endpoint configurations and rate limits
+  - Specific ColBERTv2 retriever setup details for HotPotQA experiments
+scores:
+  methodology: 4
+  overall: 4.0
+  reproducibility: 4
+  technical_accuracy: 4
+  validity: 4

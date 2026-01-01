@@ -1,0 +1,64 @@
+confidence: high
+evaluation:
+  contribution_statement: 'The paper systematically identifies and addresses five
+    major shortcomings in AI agent benchmarking: cost-blindness in evaluations, conflation
+    of model vs. downstream developer needs, inadequate holdout sets enabling shortcuts,
+    and lack of standardization leading to irreproducible results.
+
+    '
+  missing_related_work:
+  - Broader dataset shift and distribution robustness literature relevant to holdout
+    set design
+  - Cost-aware machine learning literature beyond inference costs
+  novelty_assessment:
+    actual_novelty: First comprehensive critique of agent evaluation methodology;
+      individual issues known but not systematically addressed in agent context
+    claimed_novelty: Systematic identification of fundamental issues in agent benchmarking
+      practices and empirical demonstration of cost-accuracy tradeoffs
+    prior_work_doing_similar:
+    - paper: General ML evaluation methodology papers (Henderson et al., Lipton &
+        Steinhardt)
+      relationship: Address similar reproducibility/evaluation issues but not specifically
+        for agents
+  questions_for_authors:
+  - How sensitive are cost analyses to rapid changes in API pricing models over time?
+  - What are the scalability limitations of joint optimization as agent tasks become
+    more complex?
+  - How can benchmark creators balance appropriate holdout design with the cost and
+    effort of benchmark creation?
+  significance_assessment:
+    practical_impact: High - could prevent wasted resources on overly complex agents
+      and improve evaluation reliability in an important emerging field
+    target_audience: AI researchers developing agents, benchmark creators, practitioners
+      deploying agent systems
+    theoretical_impact: Provides framework for model vs. downstream evaluation needs
+      and agent generality taxonomy
+  strengths:
+  - First comprehensive systematic analysis of agent benchmarking practices across
+    multiple dimensions
+  - Strong empirical findings showing simple baselines matching complex 'SOTA' agents
+    at much lower cost
+  - Practical joint optimization framework demonstrating cost-accuracy tradeoffs
+  - Thorough survey of 17 agent benchmarks with clear taxonomy of generality levels
+  - Well-documented reproducibility issues with specific examples and evidence
+  - Actionable recommendations that could significantly improve field practices
+  summary: 'This paper provides a comprehensive and systematic critique of current
+    AI agent evaluation practices, identifying multiple fundamental issues including
+    narrow focus on accuracy over cost, inadequate holdout strategies, and lack of
+    standardization. The authors provide strong empirical evidence across multiple
+    benchmarks and offer concrete recommendations for improving agent evaluation practices.
+
+    '
+  weaknesses:
+  - Some case studies (NovelQA) limited to single runs due to cost constraints
+  - Could better connect to broader ML evaluation methodology literature beyond agent-specific
+    issues
+  - Cost analysis sensitivity to API pricing changes acknowledged but not fully addressed
+expertise_level: expert
+recommendation: accept
+scores:
+  evidence_quality: 4
+  literature_coverage: 4
+  novelty: 4
+  overall: 4.0
+  significance: 4
