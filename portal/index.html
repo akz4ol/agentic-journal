@@ -81,13 +81,19 @@ title: Submission Portal
         <h3>Manuscript Upload</h3>
         <div class="form-group">
           <label for="pdf">Paper PDF * (max 50MB)</label>
-          <div class="file-upload">
+          <div class="file-upload" id="file-upload-zone">
             <input type="file" id="pdf" name="pdf" accept=".pdf" required>
             <div class="file-upload-text">
               <span class="upload-icon">📄</span>
               <span>Drop PDF here or click to browse</span>
             </div>
             <div id="file-info" class="file-info"></div>
+          </div>
+          <div id="upload-progress" class="upload-progress" style="display: none;">
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <span id="progress-text">Uploading... 0%</span>
           </div>
         </div>
       </div>
@@ -282,12 +288,19 @@ title: Submission Portal
   padding: 2rem;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background-color 0.2s;
   position: relative;
 }
 
-.file-upload:hover {
+.file-upload:hover,
+.file-upload.dragover {
   border-color: var(--primary);
+  background-color: #f8f9ff;
+}
+
+.file-upload.has-file {
+  border-color: #28a745;
+  background-color: #f8fff8;
 }
 
 .file-upload input[type="file"] {
@@ -312,6 +325,31 @@ title: Submission Portal
   font-weight: 500;
 }
 
+.upload-progress {
+  margin-top: 1rem;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #4f46e5);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+#progress-text {
+  font-size: 0.85rem;
+  color: #666;
+  display: block;
+  margin-top: 0.5rem;
+}
+
 .form-actions {
   text-align: center;
   margin-top: 2rem;
@@ -326,12 +364,17 @@ title: Submission Portal
   transition: all 0.2s;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background: var(--primary);
   color: white;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   opacity: 0.9;
 }
 
@@ -379,6 +422,34 @@ title: Submission Portal
   margin-bottom: 1rem;
 }
 
+.status-steps {
+  text-align: left;
+  max-width: 400px;
+  margin: 1.5rem auto;
+}
+
+.status-step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  color: #666;
+}
+
+.status-step.active {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.status-step.completed {
+  color: #28a745;
+}
+
+.status-step .step-icon {
+  width: 24px;
+  text-align: center;
+}
+
 @media (max-width: 600px) {
   .author-entry {
     grid-template-columns: 1fr;
@@ -387,11 +458,15 @@ title: Submission Portal
 </style>
 
 <script>
-// GitHub OAuth Configuration
+// Configuration
 const CLIENT_ID = 'Ov23ligEG9UfAYdEHRJO';
 const REDIRECT_URI = window.location.origin + '/agentic-journal/portal/callback/';
 const REPO_OWNER = 'akz4ol';
 const REPO_NAME = 'agentic-journal';
+const PDF_WORKER_URL = 'https://agentic-journal-pdf.blog-mot2gmob.workers.dev';
+
+// State
+let selectedFile = null;
 
 // Check for existing session
 document.addEventListener('DOMContentLoaded', function() {
@@ -402,8 +477,8 @@ document.addEventListener('DOMContentLoaded', function() {
     showSubmissionForm(user);
   }
 
-  // Setup event listeners
   setupEventListeners();
+  setupDragDrop();
 });
 
 function setupEventListeners() {
@@ -447,17 +522,54 @@ function setupEventListeners() {
     container.appendChild(entry);
   });
 
-  // File upload display
+  // File selection
   document.getElementById('pdf').addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      document.getElementById('file-info').textContent = `${file.name} (${sizeMB} MB)`;
-    }
+    handleFileSelect(this.files[0]);
   });
 
   // Form submission
   document.getElementById('submission-form').addEventListener('submit', handleSubmission);
+}
+
+function setupDragDrop() {
+  const zone = document.getElementById('file-upload-zone');
+
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.classList.add('dragover');
+  });
+
+  zone.addEventListener('dragleave', () => {
+    zone.classList.remove('dragover');
+  });
+
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileSelect(files[0]);
+    }
+  });
+}
+
+function handleFileSelect(file) {
+  if (!file) return;
+
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    alert('Please select a PDF file');
+    return;
+  }
+
+  if (file.size > 50 * 1024 * 1024) {
+    alert('File too large. Maximum size is 50MB.');
+    return;
+  }
+
+  selectedFile = file;
+  const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+  document.getElementById('file-info').textContent = `${file.name} (${sizeMB} MB)`;
+  document.getElementById('file-upload-zone').classList.add('has-file');
 }
 
 function showSubmissionForm(user) {
@@ -467,34 +579,67 @@ function showSubmissionForm(user) {
   document.getElementById('user-name').textContent = user.login;
 }
 
+function updateProgress(percent, message) {
+  document.getElementById('progress-fill').style.width = percent + '%';
+  document.getElementById('progress-text').textContent = message || `Uploading... ${percent}%`;
+}
+
+function showStatus(message, steps) {
+  document.getElementById('submission-form').style.display = 'none';
+  document.getElementById('submission-status').style.display = 'block';
+
+  let stepsHtml = '';
+  if (steps) {
+    stepsHtml = '<div class="status-steps">' +
+      steps.map((step, i) => {
+        let className = 'status-step';
+        let icon = '○';
+        if (step.completed) {
+          className += ' completed';
+          icon = '✓';
+        } else if (step.active) {
+          className += ' active';
+          icon = '◉';
+        }
+        return `<div class="${className}"><span class="step-icon">${icon}</span>${step.text}</div>`;
+      }).join('') +
+      '</div>';
+  }
+
+  document.getElementById('status-message').innerHTML = `<p>${message}</p>${stepsHtml}`;
+}
+
 async function handleSubmission(e) {
   e.preventDefault();
 
-  const form = e.target;
-  const formData = new FormData(form);
-
-  // Check if PDF is selected
-  const pdfFile = formData.get('pdf');
-  if (!pdfFile || !pdfFile.name) {
+  if (!selectedFile) {
     alert('Please select a PDF file to upload');
     return;
   }
 
+  const form = e.target;
+  const formData = new FormData(form);
+  const token = localStorage.getItem('github_token');
+
   // Generate submission ID
   const submissionId = `AJ-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
 
-  // Collect form data
-  const title = formData.get('title');
-  const abstract = formData.get('abstract');
-  const paperType = formData.get('paper_type');
-  const keywords = formData.get('keywords').split(',').map(k => k.trim());
+  // Collect metadata
+  const metadata = {
+    title: formData.get('title'),
+    paper_type: formData.get('paper_type'),
+    abstract: formData.get('abstract'),
+    keywords: formData.get('keywords').split(',').map(k => k.trim()),
+    code_url: formData.get('code_url') || '',
+    data_url: formData.get('data_url') || '',
+    authors: []
+  };
 
   // Collect authors
-  const authors = [];
   let i = 1;
   while (formData.get(`author_name_${i}`)) {
     if (formData.get(`author_name_${i}`).trim()) {
-      authors.push({
+      metadata.authors.push({
         name: formData.get(`author_name_${i}`),
         email: formData.get(`author_email_${i}`),
         affiliation: formData.get(`author_affiliation_${i}`) || ''
@@ -503,76 +648,165 @@ async function handleSubmission(e) {
     i++;
   }
 
-  // Create issue body with all metadata
+  // Disable submit button
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('upload-progress').style.display = 'block';
+
+  try {
+    // Step 1: Get presigned upload URL
+    updateProgress(10, 'Preparing upload...');
+
+    const presignResponse = await fetch(`${PDF_WORKER_URL}/presign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submissionId,
+        filename: selectedFile.name,
+        contentType: 'application/pdf',
+        fileSize: selectedFile.size,
+        githubToken: token
+      })
+    });
+
+    if (!presignResponse.ok) {
+      const error = await presignResponse.json();
+      throw new Error(error.error || 'Failed to prepare upload');
+    }
+
+    const { uploadUrl, key, uploadToken } = await presignResponse.json();
+
+    // Step 2: Upload PDF
+    showStatus('Uploading your paper...', [
+      { text: 'Preparing upload', completed: true },
+      { text: 'Uploading PDF', active: true },
+      { text: 'Creating submission', completed: false },
+      { text: 'Starting review', completed: false }
+    ]);
+
+    const uploadFormData = new FormData();
+    uploadFormData.append('file', selectedFile);
+    uploadFormData.append('uploadToken', uploadToken);
+    uploadFormData.append('key', key);
+    uploadFormData.append('submissionId', submissionId);
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      body: uploadFormData
+    });
+
+    if (!uploadResponse.ok) {
+      const error = await uploadResponse.json();
+      throw new Error(error.error || 'Failed to upload PDF');
+    }
+
+    const { downloadUrl } = await uploadResponse.json();
+
+    // Step 3: Trigger review workflow
+    showStatus('Creating submission...', [
+      { text: 'Preparing upload', completed: true },
+      { text: 'Uploading PDF', completed: true },
+      { text: 'Creating submission', active: true },
+      { text: 'Starting review', completed: false }
+    ]);
+
+    const triggerResponse = await fetch(`${PDF_WORKER_URL}/trigger-review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        submissionId,
+        metadata,
+        pdfUrl: downloadUrl,
+        githubToken: token
+      })
+    });
+
+    if (!triggerResponse.ok) {
+      const error = await triggerResponse.json();
+      throw new Error(error.error || 'Failed to create submission');
+    }
+
+    const { issueNumber, issueUrl } = await triggerResponse.json();
+
+    // Step 4: Success!
+    showStatus('Review started!', [
+      { text: 'Preparing upload', completed: true },
+      { text: 'Uploading PDF', completed: true },
+      { text: 'Creating submission', completed: true },
+      { text: 'Starting review', completed: true }
+    ]);
+
+    // Store submission locally
+    const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
+    submissions.push({
+      id: submissionId,
+      title: metadata.title,
+      status: 'processing',
+      submitted_at: new Date().toISOString(),
+      issue_number: issueNumber,
+      issue_url: issueUrl
+    });
+    localStorage.setItem('submissions', JSON.stringify(submissions));
+
+    // Show success
+    setTimeout(() => {
+      document.getElementById('submission-status').style.display = 'none';
+      document.getElementById('submission-success').style.display = 'block';
+      document.getElementById('submission-id').textContent = submissionId;
+    }, 1500);
+
+  } catch (error) {
+    console.error('Submission error:', error);
+    alert(`Submission failed: ${error.message}\n\nPlease try again or use the fallback GitHub upload method.`);
+
+    // Show fallback option
+    showFallbackOption(submissionId, metadata);
+  }
+}
+
+function showFallbackOption(submissionId, metadata) {
+  // Fallback to original GitHub issue method
   const issueBody = `## New Paper Submission
 
 **Submission ID:** ${submissionId}
-**Title:** ${title}
-**Type:** ${paperType}
-**Authors:** ${authors.map(a => a.name).join(', ')}
+**Title:** ${metadata.title}
+**Type:** ${metadata.paper_type}
+**Authors:** ${metadata.authors.map(a => a.name).join(', ')}
 
 ### Abstract
-${abstract}
+${metadata.abstract}
 
 ### Keywords
-${keywords.join(', ')}
+${metadata.keywords.join(', ')}
 
-${formData.get('code_url') ? `**Code:** ${formData.get('code_url')}` : ''}
-${formData.get('data_url') ? `**Data:** ${formData.get('data_url')}` : ''}
+${metadata.code_url ? `**Code:** ${metadata.code_url}` : ''}
+${metadata.data_url ? `**Data:** ${metadata.data_url}` : ''}
 
 ---
 
-## 📎 ATTACH YOUR PDF BELOW
+## ATTACH YOUR PDF BELOW
 
 **Drag and drop your PDF file into this text area before submitting.**
 
-The file "${pdfFile.name}" should be attached here:
-
-
-
 ---
-*Submitted via Agentic Journal Portal*
+*Submitted via Agentic Journal Portal (Fallback)*
 `;
 
-  // Store submission locally
-  const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
-  submissions.push({
-    id: submissionId,
-    title,
-    status: 'pending',
-    submitted_at: new Date().toISOString()
-  });
-  localStorage.setItem('submissions', JSON.stringify(submissions));
-
-  // Redirect to GitHub new issue page with pre-filled content
-  const issueTitle = encodeURIComponent(`[Submission] ${title}`);
+  const issueTitle = encodeURIComponent(`[Submission] ${metadata.title}`);
   const issueBodyEncoded = encodeURIComponent(issueBody);
-  const labels = encodeURIComponent(`submission,${paperType}`);
+  const labels = encodeURIComponent(`submission,${metadata.paper_type}`);
 
   const githubIssueUrl = `https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/new?title=${issueTitle}&body=${issueBodyEncoded}&labels=${labels}`;
 
-  // Show instructions modal
-  document.getElementById('submission-form').style.display = 'none';
-  document.getElementById('submission-status').style.display = 'block';
   document.getElementById('status-message').innerHTML = `
-    <h3>Almost Done!</h3>
-    <p>Click the button below to open GitHub and complete your submission.</p>
-    <p><strong>Important:</strong> On the GitHub page, drag your PDF file into the text area before clicking "Submit new issue".</p>
+    <h3>Upload Service Unavailable</h3>
+    <p>Don't worry! You can still submit using GitHub.</p>
+    <p><strong>Click below and attach your PDF to the GitHub issue:</strong></p>
     <br>
-    <a href="${githubIssueUrl}" target="_blank" class="btn btn-primary btn-large" onclick="showSuccess()">
-      Open GitHub to Attach PDF & Submit
+    <a href="${githubIssueUrl}" target="_blank" class="btn btn-primary btn-large">
+      Submit via GitHub
     </a>
     <br><br>
     <p style="font-size: 0.9rem; color: #666;">Your submission ID: <strong>${submissionId}</strong></p>
   `;
-}
-
-function showSuccess() {
-  setTimeout(() => {
-    document.getElementById('submission-status').style.display = 'none';
-    document.getElementById('submission-success').style.display = 'block';
-    document.getElementById('submission-id').textContent = localStorage.getItem('submissions') ?
-      JSON.parse(localStorage.getItem('submissions')).slice(-1)[0]?.id : 'Check GitHub';
-  }, 1000);
 }
 </script>

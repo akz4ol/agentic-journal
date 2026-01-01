@@ -1,0 +1,312 @@
+name: Assign Human Reviewer
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  assign-reviewer:
+    name: Process Reviewer Assignment
+    if: |
+      contains(github.event.issue.labels.*.name, 'submission') &&
+      (startsWith(github.event.comment.body, '/assign-reviewer') ||
+       startsWith(github.event.comment.body, '/request-human-review'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse command
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+            const author = context.payload.comment.user.login;
+
+            // Check if author is authorized (repo collaborator)
+            try {
+              const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: author
+              });
+
+              if (!['admin', 'write'].includes(permission.permission)) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: `@${author} You don't have permission to assign reviewers.`
+                });
+                core.setOutput('authorized', 'false');
+                return;
+              }
+            } catch (e) {
+              core.setOutput('authorized', 'false');
+              return;
+            }
+
+            core.setOutput('authorized', 'true');
+
+            // Parse reviewer assignment
+            // Format: /assign-reviewer @username [expertise-area]
+            const assignMatch = comment.match(/\/assign-reviewer\s+@(\w+)(?:\s+(.+))?/);
+            if (assignMatch) {
+              core.setOutput('command', 'assign');
+              core.setOutput('reviewer', assignMatch[1]);
+              core.setOutput('expertise', assignMatch[2] || 'general');
+              return;
+            }
+
+            // Format: /request-human-review [reason]
+            const requestMatch = comment.match(/\/request-human-review(?:\s+(.+))?/);
+            if (requestMatch) {
+              core.setOutput('command', 'request');
+              core.setOutput('reason', requestMatch[1] || 'Additional human review requested');
+              return;
+            }
+
+            core.setOutput('command', 'unknown');
+
+      - name: Assign specific reviewer
+        if: steps.parse.outputs.authorized == 'true' && steps.parse.outputs.command == 'assign'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reviewer = '${{ steps.parse.outputs.reviewer }}';
+            const expertise = '${{ steps.parse.outputs.expertise }}';
+            const issueNumber = context.issue.number;
+
+            // Get submission ID from issue body
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            const idMatch = issue.data.body.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+            const submissionId = idMatch ? idMatch[1] : `AJ-${issueNumber}`;
+
+            // Add reviewer label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['needs-human-review', `reviewer:${reviewer}`]
+            });
+
+            // Generate review link with token
+            const token = Buffer.from(`${submissionId}:${reviewer}:${Date.now()}`).toString('base64');
+            const reviewUrl = `https://akz4ol.github.io/agentic-journal/review/?submission=${submissionId}&reviewer=${reviewer}&token=${token}`;
+
+            // Comment with assignment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## 👤 Human Reviewer Assigned\n\n**Reviewer:** @${reviewer}\n**Expertise Area:** ${expertise}\n**Submission ID:** ${submissionId}\n\n### Review Instructions\n\n@${reviewer} - You have been assigned to review this submission. Please:\n\n1. **Review the PDF** attached to this issue\n2. **Submit your review** using the form: [Open Review Form](${reviewUrl})\n3. **Or comment here** with your feedback in the following format:\n\n\`\`\`\n/human-review\nScore: 4.5\nRecommendation: minor_revision\nStrengths:\n- Strong methodology\n- Clear presentation\n\nWeaknesses:\n- Missing related work\n- Limited evaluation\n\nDetailed Comments:\nYour detailed feedback here...\n\`\`\`\n\n---\n*Human review requested at ${new Date().toISOString()}*`
+            });
+
+            // Notify reviewer via GitHub notification (they're mentioned)
+            console.log(`Assigned ${reviewer} to review ${submissionId}`);
+
+      - name: Request human review (no specific reviewer)
+        if: steps.parse.outputs.authorized == 'true' && steps.parse.outputs.command == 'request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reason = '${{ steps.parse.outputs.reason }}';
+            const issueNumber = context.issue.number;
+
+            // Get submission ID
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            const idMatch = issue.data.body.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+            const submissionId = idMatch ? idMatch[1] : `AJ-${issueNumber}`;
+
+            // Add label for human review pool
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['needs-human-review', 'reviewer-needed']
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## 🔍 Human Review Requested\n\n**Submission ID:** ${submissionId}\n**Reason:** ${reason}\n\nThis submission has been flagged for additional human review. Available reviewers can claim this review by commenting:\n\n\`\`\`\n/claim-review\n\`\`\`\n\n---\n*Human review requested at ${new Date().toISOString()}*`
+            });
+
+  claim-review:
+    name: Claim Review
+    if: |
+      contains(github.event.issue.labels.*.name, 'reviewer-needed') &&
+      startsWith(github.event.comment.body, '/claim-review')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process claim
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const claimer = context.payload.comment.user.login;
+            const issueNumber = context.issue.number;
+
+            // Check if already claimed
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            const alreadyClaimed = issue.data.labels.some(l => l.name.startsWith('reviewer:'));
+
+            if (alreadyClaimed) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `@${claimer} This review has already been claimed by another reviewer.`
+              });
+              return;
+            }
+
+            // Get submission ID
+            const idMatch = issue.data.body.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+            const submissionId = idMatch ? idMatch[1] : `AJ-${issueNumber}`;
+
+            // Generate review link
+            const token = Buffer.from(`${submissionId}:${claimer}:${Date.now()}`).toString('base64');
+            const reviewUrl = `https://akz4ol.github.io/agentic-journal/review/?submission=${submissionId}&reviewer=${claimer}&token=${token}`;
+
+            // Update labels
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: 'reviewer-needed'
+              });
+            } catch (e) {}
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: [`reviewer:${claimer}`]
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## ✅ Review Claimed\n\n@${claimer} has claimed this review.\n\n**Submission ID:** ${submissionId}\n\n### Submit Your Review\n\n[Open Review Form](${reviewUrl})\n\nOr comment here with your feedback using the \`/human-review\` format.\n\n---\n*Claimed at ${new Date().toISOString()}*`
+            });
+
+  process-human-review:
+    name: Process Human Review
+    if: |
+      contains(github.event.issue.labels.*.name, 'needs-human-review') &&
+      startsWith(github.event.comment.body, '/human-review')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse and save review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comment = context.payload.comment.body;
+            const reviewer = context.payload.comment.user.login;
+            const issueNumber = context.issue.number;
+
+            // Get submission ID
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            const idMatch = issue.data.body.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+            const submissionId = idMatch ? idMatch[1] : `AJ-${issueNumber}`;
+
+            // Parse review from comment
+            const scoreMatch = comment.match(/Score:\s*([\d.]+)/i);
+            const recMatch = comment.match(/Recommendation:\s*(\w+)/i);
+            const strengthsMatch = comment.match(/Strengths:\s*([\s\S]*?)(?=\nWeaknesses:|\nDetailed Comments:)/i);
+            const weaknessesMatch = comment.match(/Weaknesses:\s*([\s\S]*?)(?=\nDetailed Comments:)/i);
+            const detailedMatch = comment.match(/Detailed Comments:\s*([\s\S]*?)$/i);
+
+            const review = {
+              reviewer: reviewer,
+              reviewer_type: 'human',
+              submitted_at: new Date().toISOString(),
+              score: scoreMatch ? parseFloat(scoreMatch[1]) : 3.0,
+              recommendation: recMatch ? recMatch[1].toLowerCase() : 'pending',
+              strengths: strengthsMatch ? strengthsMatch[1].trim().split('\n').map(s => s.replace(/^-\s*/, '').trim()).filter(Boolean) : [],
+              weaknesses: weaknessesMatch ? weaknessesMatch[1].trim().split('\n').map(s => s.replace(/^-\s*/, '').trim()).filter(Boolean) : [],
+              detailed_comments: detailedMatch ? detailedMatch[1].trim() : ''
+            };
+
+            // Save review
+            const reviewDir = `reviews/${submissionId}`;
+            fs.mkdirSync(reviewDir, { recursive: true });
+
+            const reviewContent = `reviewer: "${review.reviewer}"
+reviewer_type: human
+submitted_at: "${review.submitted_at}"
+score: ${review.score}
+recommendation: ${review.recommendation}
+strengths:
+${review.strengths.map(s => `  - "${s}"`).join('\n')}
+weaknesses:
+${review.weaknesses.map(w => `  - "${w}"`).join('\n')}
+detailed_comments: |
+  ${review.detailed_comments.replace(/\n/g, '\n  ')}
+`;
+
+            fs.writeFileSync(`${reviewDir}/human-review-${reviewer}.yaml`, reviewContent);
+            console.log('Human review saved:', reviewContent);
+
+            // Post confirmation
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## ✅ Human Review Received\n\n**Reviewer:** @${reviewer}\n**Score:** ${review.score}/5.0\n**Recommendation:** ${review.recommendation.toUpperCase()}\n\n### Summary\n\n**Strengths:**\n${review.strengths.map(s => `- ${s}`).join('\n')}\n\n**Weaknesses:**\n${review.weaknesses.map(w => `- ${w}`).join('\n')}\n\n---\n\nThis human review will be incorporated into the final decision.\n\n*Review submitted at ${review.submitted_at}*`
+            });
+
+            // Update labels
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: 'needs-human-review'
+              });
+            } catch (e) {}
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['human-review-complete']
+            });
+
+      - name: Commit review
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "👤 Add human review"
+          file_pattern: "reviews/**"

@@ -12,6 +12,7 @@ permissions:
 
 env:
   PYTHON_VERSION: '3.11'
+  PDF_WORKER_URL: 'https://agentic-journal-pdf.blog-mot2gmob.workers.dev'
 
 jobs:
   # Process submission when issue is created with PDF attached
@@ -22,19 +23,45 @@ jobs:
       (github.event_name == 'issue_comment' && contains(github.event.issue.labels.*.name, 'submission'))
     runs-on: ubuntu-latest
     steps:
-      - name: Check for PDF attachment
+      - name: Check for PDF (R2 or GitHub attachment)
         id: check-pdf
         uses: actions/github-script@v7
         with:
           script: |
-            // Check both issue body and comment for PDF (comment may just be a trigger)
+            // Check both issue body and comment for PDF
             const issueBody = context.payload.issue.body || '';
             const commentBody = context.eventName === 'issue_comment' ? (context.payload.comment.body || '') : '';
 
             console.log('Event type:', context.eventName);
-            console.log('Checking issue body and comment for PDF...');
+            console.log('Checking for PDF source...');
 
-            // Look for PDF attachment - GitHub uses various formats
+            // Check for R2 storage URL (direct upload)
+            const r2Pattern = /\*\*Storage:\*\* R2\s*\n\*\*URL:\*\* (https:\/\/agentic-journal-pdf[^\s]+)/;
+            const r2Match = issueBody.match(r2Pattern);
+
+            if (r2Match) {
+              core.setOutput('has_pdf', 'true');
+              core.setOutput('pdf_url', r2Match[1]);
+              core.setOutput('pdf_source', 'r2');
+              console.log('Found R2 PDF URL:', r2Match[1]);
+              return;
+            }
+
+            // Check for direct-upload label (PDF is in R2)
+            if (context.payload.issue.labels.some(l => l.name === 'direct-upload')) {
+              // Extract submission ID and construct R2 URL
+              const idMatch = issueBody.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+              if (idMatch) {
+                const r2Url = `${process.env.PDF_WORKER_URL}/pdf/${idMatch[1]}`;
+                core.setOutput('has_pdf', 'true');
+                core.setOutput('pdf_url', r2Url);
+                core.setOutput('pdf_source', 'r2');
+                console.log('Constructed R2 PDF URL:', r2Url);
+                return;
+              }
+            }
+
+            // Look for GitHub attachment - various formats
             const patterns = [
               /\[([^\]]*\.pdf)\]\((https:\/\/github\.com\/user-attachments\/[^)]+)\)/gi,
               /\[([^\]]*)\]\((https:\/\/github\.com\/user-attachments\/[^)]+\.pdf[^)]*)\)/gi,
@@ -54,13 +81,14 @@ jobs:
               return null;
             }
 
-            // Check comment first (in case user attached PDF in comment), then issue body
+            // Check comment first, then issue body
             let pdfUrl = findPdfUrl(commentBody) || findPdfUrl(issueBody);
 
             if (pdfUrl) {
               core.setOutput('has_pdf', 'true');
               core.setOutput('pdf_url', pdfUrl);
-              console.log('Found PDF URL:', pdfUrl);
+              core.setOutput('pdf_source', 'github');
+              console.log('Found GitHub PDF URL:', pdfUrl);
             } else {
               core.setOutput('has_pdf', 'false');
               console.log('No PDF found');
@@ -129,7 +157,21 @@ jobs:
         if: steps.check-pdf.outputs.has_pdf == 'true'
         run: |
           mkdir -p submissions/${{ steps.metadata.outputs.submission_id }}
-          curl -L "${{ steps.check-pdf.outputs.pdf_url }}" -o submissions/${{ steps.metadata.outputs.submission_id }}/paper.pdf
+
+          PDF_SOURCE="${{ steps.check-pdf.outputs.pdf_source }}"
+          PDF_URL="${{ steps.check-pdf.outputs.pdf_url }}"
+
+          if [ "$PDF_SOURCE" = "r2" ]; then
+            # R2 requires authentication header
+            echo "Downloading from R2 storage..."
+            curl -L -H "Authorization: Bearer ${{ secrets.PDF_WORKER_TOKEN }}" \
+              "$PDF_URL" -o submissions/${{ steps.metadata.outputs.submission_id }}/paper.pdf
+          else
+            # GitHub attachment - direct download
+            echo "Downloading from GitHub..."
+            curl -L "$PDF_URL" -o submissions/${{ steps.metadata.outputs.submission_id }}/paper.pdf
+          fi
+
           echo "PDF downloaded successfully"
           ls -la submissions/${{ steps.metadata.outputs.submission_id }}/
 
@@ -207,6 +249,42 @@ jobs:
               repo: context.repo.repo,
               body: `## 🚀 Processing Started!\n\n**Submission ID:** ${submissionId}\n\nYour PDF has been received and the review process is starting.\n\n| Stage | Status |\n|-------|--------|\n| PDF Received | ✅ Complete |\n| Validation | 🔄 In Progress |\n| Agent Reviews | ⏳ Pending |\n| Meta-Review | ⏳ Pending |\n\nWe'll update this issue with results as each stage completes.`
             });
+
+      - name: Send submission received email
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const submissionId = '${{ steps.metadata.outputs.submission_id }}';
+            const title = '${{ steps.metadata.outputs.title }}';
+
+            // Extract author email from issue body
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const body = issue.data.body || '';
+            const authorsMatch = body.match(/\*\*Authors:\*\* (.+)/);
+
+            // Try to send notification
+            try {
+              const response = await fetch('${{ env.PDF_WORKER_URL }}/notify/submission-received', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  submissionId,
+                  title,
+                  authorEmail: issue.data.user.email || '',
+                  authorName: authorsMatch ? authorsMatch[1].split(',')[0].trim() : ''
+                })
+              });
+              console.log('Email notification sent:', response.ok);
+            } catch (e) {
+              console.log('Email notification failed (non-critical):', e.message);
+            }
 
       - name: Run validation
         if: steps.check-pdf.outputs.has_pdf == 'true'
@@ -298,6 +376,65 @@ jobs:
               issue_number: context.issue.number,
               labels: ['completed']
             });
+
+      - name: Send review complete email
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const submissionId = '${{ steps.metadata.outputs.submission_id }}';
+            const title = '${{ steps.metadata.outputs.title }}';
+
+            try {
+              // Load meta-review
+              const content = fs.readFileSync(`reviews/${submissionId}/meta-review.yaml`, 'utf8');
+
+              // Extract key fields
+              const decisionMatch = content.match(/^decision:\s*(.+)$/m);
+              const technicalMatch = content.match(/technical:\s*([\d.]+)/);
+              const domainMatch = content.match(/domain:\s*([\d.]+)/);
+              const ethicsMatch = content.match(/ethics:\s*([\d.]+)/);
+              const clarityMatch = content.match(/clarity:\s*([\d.]+)/);
+              const rationaleMatch = content.match(/^rationale:\s*[|>]?\s*\n([\s\S]*?)(?=^\w+:|$)/m);
+
+              const decision = decisionMatch ? decisionMatch[1].trim() : 'Pending';
+              const scores = {
+                technical: technicalMatch ? parseFloat(technicalMatch[1]) : 0,
+                domain: domainMatch ? parseFloat(domainMatch[1]) : 0,
+                ethics: ethicsMatch ? parseFloat(ethicsMatch[1]) : 0,
+                clarity: clarityMatch ? parseFloat(clarityMatch[1]) : 0
+              };
+
+              // Get author info from issue
+              const issue = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number
+              });
+
+              const body = issue.data.body || '';
+              const authorsMatch = body.match(/\*\*Authors:\*\* (.+)/);
+
+              // Send notification
+              const response = await fetch('${{ env.PDF_WORKER_URL }}/notify/review-complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  submissionId,
+                  title,
+                  authorEmail: issue.data.user.email || '',
+                  authorName: authorsMatch ? authorsMatch[1].split(',')[0].trim() : '',
+                  decision: decision.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                  scores,
+                  summary: rationaleMatch ? rationaleMatch[1].trim().replace(/^\s+/gm, '').slice(0, 500) : ''
+                })
+              });
+              console.log('Review complete email sent:', response.ok);
+            } catch (e) {
+              console.log('Email notification failed (non-critical):', e.message);
+            }
 
       - name: Commit reviews
         if: steps.check-pdf.outputs.has_pdf == 'true'

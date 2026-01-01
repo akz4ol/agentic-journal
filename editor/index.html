@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor Dashboard - Agentic Journal</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 260px;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.3);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      margin-bottom: 2rem;
+    }
+
+    .logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .editor-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: #8b5cf6;
+      margin-top: 0.5rem;
+    }
+
+    .nav-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .nav-section h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 0.75rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      color: #94a3b8;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 0.25rem;
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #f8fafc;
+    }
+
+    .nav-item.active {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      padding: 0.125rem 0.5rem;
+      background: rgba(239, 68, 68, 0.2);
+      border-radius: 12px;
+      font-size: 0.75rem;
+      color: #ef4444;
+    }
+
+    .main-content {
+      margin-left: 260px;
+      padding: 2rem;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      color: #f8fafc;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border: none;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #e2e8f0;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+
+    .stat-card h4 {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .stat-subtext {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-header h2 {
+      font-size: 1.1rem;
+      color: #f8fafc;
+    }
+
+    .submission-list {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .submission-item {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 1rem;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .submission-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .submission-item:last-child {
+      border-bottom: none;
+    }
+
+    .submission-info h3 {
+      font-size: 0.95rem;
+      color: #f8fafc;
+      margin-bottom: 0.25rem;
+    }
+
+    .submission-meta {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .submission-status {
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-pending {
+      background: rgba(234, 179, 8, 0.2);
+      color: #eab308;
+    }
+
+    .status-processing {
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+    }
+
+    .status-revision {
+      background: rgba(249, 115, 22, 0.2);
+      color: #f97316;
+    }
+
+    .status-needs-review {
+      background: rgba(139, 92, 246, 0.2);
+      color: #8b5cf6;
+    }
+
+    .status-completed {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .submission-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .action-btn {
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: #94a3b8;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+    }
+
+    .action-btn.primary {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: #3b82f6;
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      font-size: 1.2rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      color: #f8fafc;
+      font-size: 0.95rem;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .command-preview {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 0.85rem;
+      color: #10b981;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #64748b;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 0.5rem;
+      color: #94a3b8;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .quick-action {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .quick-action:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .quick-action h4 {
+      color: #f8fafc;
+      margin-bottom: 0.25rem;
+    }
+
+    .quick-action p {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        display: none;
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">Agentic Journal</div>
+      <div class="editor-badge">Editor Dashboard</div>
+    </div>
+
+    <nav>
+      <div class="nav-section">
+        <h3>Overview</h3>
+        <div class="nav-item active" onclick="showSection('dashboard')">
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" onclick="showSection('queue')">
+          <span>Review Queue</span>
+          <span class="nav-badge" id="queueCount">0</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <h3>Actions</h3>
+        <div class="nav-item" onclick="showSection('pending')">
+          <span>Needs Decision</span>
+          <span class="nav-badge" id="pendingCount">0</span>
+        </div>
+        <div class="nav-item" onclick="showSection('revisions')">
+          <span>Awaiting Revision</span>
+        </div>
+        <div class="nav-item" onclick="showSection('human-review')">
+          <span>Human Reviews</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <h3>Archive</h3>
+        <div class="nav-item" onclick="showSection('accepted')">
+          <span>Accepted</span>
+        </div>
+        <div class="nav-item" onclick="showSection('rejected')">
+          <span>Rejected</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <h3>Links</h3>
+        <a href="../dashboard/" class="nav-item">
+          <span>Public Dashboard</span>
+        </a>
+        <a href="https://github.com/akz4ol/agentic-journal/issues?q=is:issue+label:submission" class="nav-item" target="_blank">
+          <span>GitHub Issues</span>
+        </a>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <div class="header">
+      <h1>Editor Dashboard</h1>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="refreshData()">Refresh</button>
+        <a href="https://github.com/akz4ol/agentic-journal/issues/new?labels=submission" target="_blank" class="btn btn-primary">
+          New Submission
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h4>Total Submissions</h4>
+        <div class="stat-value" id="totalSubmissions">-</div>
+        <div class="stat-subtext">All time</div>
+      </div>
+      <div class="stat-card">
+        <h4>In Review</h4>
+        <div class="stat-value" id="inReview">-</div>
+        <div class="stat-subtext">Currently processing</div>
+      </div>
+      <div class="stat-card">
+        <h4>Needs Decision</h4>
+        <div class="stat-value" id="needsDecision">-</div>
+        <div class="stat-subtext">Awaiting editor action</div>
+      </div>
+      <div class="stat-card">
+        <h4>Acceptance Rate</h4>
+        <div class="stat-value" id="acceptanceRate">-</div>
+        <div class="stat-subtext">This month</div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <div class="quick-action" onclick="openModal('assign-reviewer')">
+        <h4>Assign Human Reviewer</h4>
+        <p>Request additional human review for a submission</p>
+      </div>
+      <div class="quick-action" onclick="openModal('request-revision')">
+        <h4>Request Revision</h4>
+        <p>Ask authors to revise their manuscript</p>
+      </div>
+      <div class="quick-action" onclick="openModal('final-decision')">
+        <h4>Record Final Decision</h4>
+        <p>Accept or reject a submission</p>
+      </div>
+    </div>
+
+    <!-- Submissions needing attention -->
+    <div class="section">
+      <div class="section-header">
+        <h2>Needs Attention</h2>
+      </div>
+      <div class="submission-list" id="attentionList">
+        <div class="empty-state">
+          <h3>Loading...</h3>
+          <p>Fetching submissions from GitHub</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="section">
+      <div class="section-header">
+        <h2>Recent Activity</h2>
+      </div>
+      <div class="submission-list" id="recentList">
+        <div class="empty-state">
+          <h3>Loading...</h3>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Assign Reviewer Modal -->
+  <div class="modal" id="assign-reviewer-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Assign Human Reviewer</h2>
+        <button class="modal-close" onclick="closeModal('assign-reviewer')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Submission</label>
+          <select id="assign-submission">
+            <option value="">Select a submission...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Reviewer GitHub Username</label>
+          <input type="text" id="assign-reviewer" placeholder="e.g., reviewer123">
+        </div>
+        <div class="form-group">
+          <label>Expertise Area</label>
+          <input type="text" id="assign-expertise" placeholder="e.g., machine learning, NLP">
+        </div>
+
+        <div class="command-preview" id="assign-preview">
+/assign-reviewer @username expertise-area
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="closeModal('assign-reviewer')">Cancel</button>
+          <button class="btn btn-primary" onclick="copyCommand('assign')">Copy Command</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Request Revision Modal -->
+  <div class="modal" id="request-revision-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Request Revision</h2>
+        <button class="modal-close" onclick="closeModal('request-revision')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Submission</label>
+          <select id="revision-submission">
+            <option value="">Select a submission...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Revision Type</label>
+          <select id="revision-type">
+            <option value="minor">Minor Revision (14 days)</option>
+            <option value="major">Major Revision (30 days)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Deadline (days)</label>
+          <input type="number" id="revision-deadline" value="14" min="7" max="90">
+        </div>
+        <div class="form-group">
+          <label>Instructions for Authors</label>
+          <textarea id="revision-instructions" placeholder="Please address the following concerns..."></textarea>
+        </div>
+
+        <div class="command-preview" id="revision-preview">
+/request-revision
+type: minor
+deadline: 14 days
+instructions:
+Please address the reviewer feedback.
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="closeModal('request-revision')">Cancel</button>
+          <button class="btn btn-primary" onclick="copyCommand('revision')">Copy Command</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final Decision Modal -->
+  <div class="modal" id="final-decision-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Record Final Decision</h2>
+        <button class="modal-close" onclick="closeModal('final-decision')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Submission</label>
+          <select id="decision-submission">
+            <option value="">Select a submission...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Decision</label>
+          <select id="decision-type">
+            <option value="accept">Accept</option>
+            <option value="reject">Reject</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Rationale</label>
+          <textarea id="decision-rationale" placeholder="Explanation for the decision..."></textarea>
+        </div>
+
+        <div class="command-preview" id="decision-preview">
+/final-decision
+decision: accept
+rationale:
+Your explanation here.
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="closeModal('final-decision')">Cancel</button>
+          <button class="btn btn-primary" onclick="copyCommand('decision')">Copy Command</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const REPO_OWNER = 'akz4ol';
+    const REPO_NAME = 'agentic-journal';
+
+    let submissions = [];
+
+    // Load submissions from GitHub API
+    async function loadSubmissions() {
+      try {
+        const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?labels=submission&state=all&per_page=100`);
+        if (!response.ok) throw new Error('Failed to fetch');
+
+        submissions = await response.json();
+        updateUI();
+      } catch (error) {
+        console.error('Error loading submissions:', error);
+        document.getElementById('attentionList').innerHTML = `
+          <div class="empty-state">
+            <h3>Could not load submissions</h3>
+            <p>Please check your connection or try again later</p>
+          </div>
+        `;
+      }
+    }
+
+    function updateUI() {
+      // Update stats
+      const total = submissions.length;
+      const inReview = submissions.filter(s =>
+        s.labels.some(l => l.name === 'processing')
+      ).length;
+      const needsDecision = submissions.filter(s =>
+        s.labels.some(l => l.name === 'completed' || l.name === 'revision-reviewed') &&
+        !s.labels.some(l => l.name === 'decision-final')
+      ).length;
+      const accepted = submissions.filter(s =>
+        s.labels.some(l => l.name === 'accepted')
+      ).length;
+      const decided = submissions.filter(s =>
+        s.labels.some(l => l.name === 'decision-final')
+      ).length;
+
+      document.getElementById('totalSubmissions').textContent = total;
+      document.getElementById('inReview').textContent = inReview;
+      document.getElementById('needsDecision').textContent = needsDecision;
+      document.getElementById('acceptanceRate').textContent = decided > 0 ?
+        Math.round((accepted / decided) * 100) + '%' : '-';
+
+      document.getElementById('queueCount').textContent = inReview;
+      document.getElementById('pendingCount').textContent = needsDecision;
+
+      // Update attention list
+      const attention = submissions.filter(s =>
+        s.state === 'open' && (
+          s.labels.some(l => ['completed', 'revision-reviewed', 'needs-human-review', 'waiting-for-pdf'].includes(l.name))
+        )
+      );
+
+      renderSubmissionList('attentionList', attention);
+
+      // Update recent list
+      const recent = submissions.slice(0, 10);
+      renderSubmissionList('recentList', recent);
+
+      // Update dropdowns
+      updateDropdowns();
+    }
+
+    function renderSubmissionList(elementId, items) {
+      const container = document.getElementById(elementId);
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <h3>No submissions</h3>
+            <p>Nothing to display here</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = items.map(s => {
+        const idMatch = s.body?.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+        const submissionId = idMatch ? idMatch[1] : `#${s.number}`;
+
+        const status = getStatus(s);
+
+        return `
+          <div class="submission-item" onclick="window.open('${s.html_url}', '_blank')">
+            <div class="submission-info">
+              <h3>${s.title.replace('[Submission] ', '')}</h3>
+              <div class="submission-meta">
+                ${submissionId} - Created ${new Date(s.created_at).toLocaleDateString()}
+              </div>
+            </div>
+            <span class="submission-status ${status.class}">${status.text}</span>
+            <div class="submission-actions">
+              <button class="action-btn" onclick="event.stopPropagation(); viewSubmission('${s.number}')">View</button>
+              <button class="action-btn primary" onclick="event.stopPropagation(); quickAction('${s.number}')">Action</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getStatus(submission) {
+      const labels = submission.labels.map(l => l.name);
+
+      if (labels.includes('accepted')) return { text: 'Accepted', class: 'status-completed' };
+      if (labels.includes('rejected')) return { text: 'Rejected', class: 'status-pending' };
+      if (labels.includes('awaiting-revision')) return { text: 'Awaiting Revision', class: 'status-revision' };
+      if (labels.includes('needs-human-review')) return { text: 'Needs Human Review', class: 'status-needs-review' };
+      if (labels.includes('completed')) return { text: 'Review Complete', class: 'status-completed' };
+      if (labels.includes('processing')) return { text: 'Processing', class: 'status-processing' };
+      if (labels.includes('waiting-for-pdf')) return { text: 'Waiting for PDF', class: 'status-pending' };
+
+      return { text: 'New', class: 'status-pending' };
+    }
+
+    function updateDropdowns() {
+      const openSubmissions = submissions.filter(s => s.state === 'open');
+
+      const options = openSubmissions.map(s => {
+        const idMatch = s.body?.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+        const submissionId = idMatch ? idMatch[1] : `#${s.number}`;
+        return `<option value="${s.number}">${submissionId}: ${s.title.replace('[Submission] ', '').slice(0, 50)}...</option>`;
+      }).join('');
+
+      document.getElementById('assign-submission').innerHTML =
+        '<option value="">Select a submission...</option>' + options;
+      document.getElementById('revision-submission').innerHTML =
+        '<option value="">Select a submission...</option>' + options;
+      document.getElementById('decision-submission').innerHTML =
+        '<option value="">Select a submission...</option>' + options;
+    }
+
+    function openModal(type) {
+      document.getElementById(`${type}-modal`).classList.add('active');
+      updatePreview(type);
+    }
+
+    function closeModal(type) {
+      document.getElementById(`${type}-modal`).classList.remove('active');
+    }
+
+    function updatePreview(type) {
+      if (type === 'assign') {
+        const reviewer = document.getElementById('assign-reviewer').value || 'username';
+        const expertise = document.getElementById('assign-expertise').value || 'general';
+        document.getElementById('assign-preview').textContent =
+          `/assign-reviewer @${reviewer} ${expertise}`;
+      } else if (type === 'revision') {
+        const revType = document.getElementById('revision-type').value;
+        const deadline = document.getElementById('revision-deadline').value;
+        const instructions = document.getElementById('revision-instructions').value || 'Please address the reviewer feedback.';
+        document.getElementById('revision-preview').textContent =
+`/request-revision
+type: ${revType}
+deadline: ${deadline} days
+instructions:
+${instructions}`;
+      } else if (type === 'decision') {
+        const decType = document.getElementById('decision-type').value;
+        const rationale = document.getElementById('decision-rationale').value || 'Your explanation here.';
+        document.getElementById('decision-preview').textContent =
+`/final-decision
+decision: ${decType}
+rationale:
+${rationale}`;
+      }
+    }
+
+    // Add event listeners for preview updates
+    document.querySelectorAll('#assign-reviewer, #assign-expertise').forEach(el => {
+      el.addEventListener('input', () => updatePreview('assign'));
+    });
+    document.querySelectorAll('#revision-type, #revision-deadline, #revision-instructions').forEach(el => {
+      el.addEventListener('input', () => updatePreview('revision'));
+    });
+    document.querySelectorAll('#decision-type, #decision-rationale').forEach(el => {
+      el.addEventListener('input', () => updatePreview('decision'));
+    });
+
+    async function copyCommand(type) {
+      let preview;
+      if (type === 'assign') preview = document.getElementById('assign-preview');
+      else if (type === 'revision') preview = document.getElementById('revision-preview');
+      else if (type === 'decision') preview = document.getElementById('decision-preview');
+
+      const text = preview.textContent;
+      await navigator.clipboard.writeText(text);
+
+      const submissionId = document.getElementById(`${type === 'assign' ? 'assign' : type === 'revision' ? 'revision' : 'decision'}-submission`).value;
+
+      if (submissionId) {
+        window.open(`https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/${submissionId}`, '_blank');
+      }
+
+      closeModal(type === 'assign' ? 'assign-reviewer' : type === 'revision' ? 'request-revision' : 'final-decision');
+      alert('Command copied! Paste it as a comment on the GitHub issue.');
+    }
+
+    function viewSubmission(issueNumber) {
+      window.open(`https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/${issueNumber}`, '_blank');
+    }
+
+    function quickAction(issueNumber) {
+      const submission = submissions.find(s => s.number == issueNumber);
+      if (!submission) return;
+
+      const labels = submission.labels.map(l => l.name);
+
+      if (labels.includes('completed') || labels.includes('revision-reviewed')) {
+        openModal('final-decision');
+        document.getElementById('decision-submission').value = issueNumber;
+      } else if (labels.includes('needs-human-review') || labels.includes('reviewer-needed')) {
+        openModal('assign-reviewer');
+        document.getElementById('assign-submission').value = issueNumber;
+      } else {
+        viewSubmission(issueNumber);
+      }
+    }
+
+    function showSection(section) {
+      // Update active nav
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      event.target.closest('.nav-item').classList.add('active');
+
+      // Filter and display appropriate content
+      console.log('Showing section:', section);
+      // Would implement section-specific filtering here
+    }
+
+    function refreshData() {
+      loadSubmissions();
+    }
+
+    // Close modals on escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+      }
+    });
+
+    // Initial load
+    loadSubmissions();
+
+    // Auto-refresh every 2 minutes
+    setInterval(loadSubmissions, 120000);
+  </script>
+</body>
+</html>

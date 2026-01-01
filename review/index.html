@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submit Review - Agentic Journal</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: #f8fafc;
+      margin-bottom: 0.5rem;
+    }
+
+    .submission-info {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .submission-info h2 {
+      font-size: 1rem;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
+    }
+
+    .submission-id {
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 1.1rem;
+      color: #3b82f6;
+    }
+
+    .reviewer-name {
+      color: #10b981;
+    }
+
+    .form-section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-section h3 {
+      font-size: 1.1rem;
+      color: #f8fafc;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 0.5rem;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #f8fafc;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .score-input {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .score-input input {
+      width: 100px;
+      text-align: center;
+    }
+
+    .score-slider {
+      flex: 1;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .score-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #3b82f6;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .score-label {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    .recommendation-options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    @media (min-width: 600px) {
+      .recommendation-options {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .rec-option {
+      position: relative;
+    }
+
+    .rec-option input {
+      position: absolute;
+      opacity: 0;
+    }
+
+    .rec-option label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .rec-option input:checked + label {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .rec-option label:hover {
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .rec-icon {
+      font-size: 1.5rem;
+    }
+
+    .rec-text {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .list-input {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .list-item {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .list-item input {
+      flex: 1;
+    }
+
+    .list-item button {
+      padding: 0.5rem;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 6px;
+      color: #ef4444;
+      cursor: pointer;
+    }
+
+    .add-item-btn {
+      padding: 0.5rem 1rem;
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 6px;
+      color: #3b82f6;
+      cursor: pointer;
+      font-size: 0.9rem;
+      align-self: flex-start;
+    }
+
+    .add-item-btn:hover {
+      background: rgba(59, 130, 246, 0.3);
+    }
+
+    .submit-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+      padding-top: 1rem;
+    }
+
+    .submit-btn {
+      width: 100%;
+      max-width: 400px;
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px -10px rgba(59, 130, 246, 0.5);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-message {
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+    }
+
+    .status-message.success {
+      display: block;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #10b981;
+    }
+
+    .status-message.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+    }
+
+    .ai-reviews {
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .ai-reviews h4 {
+      font-size: 0.9rem;
+      color: #8b5cf6;
+      margin-bottom: 0.75rem;
+    }
+
+    .ai-score {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.9rem;
+    }
+
+    .ai-score:last-child {
+      border-bottom: none;
+    }
+
+    .confidentiality-notice {
+      font-size: 0.8rem;
+      color: #64748b;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">Agentic Journal</div>
+      <h1>Human Peer Review</h1>
+    </header>
+
+    <div class="submission-info" id="submissionInfo">
+      <h2>Submission Details</h2>
+      <div>
+        <strong>Submission ID:</strong> <span class="submission-id" id="submissionId">Loading...</span>
+      </div>
+      <div>
+        <strong>Reviewer:</strong> <span class="reviewer-name" id="reviewerName">Loading...</span>
+      </div>
+    </div>
+
+    <div class="ai-reviews" id="aiReviews" style="display: none;">
+      <h4>AI Agent Reviews (for reference)</h4>
+      <div id="aiScores"></div>
+    </div>
+
+    <form id="reviewForm">
+      <div class="form-section">
+        <h3>Overall Assessment</h3>
+
+        <div class="form-group">
+          <label>Overall Score (1-5)</label>
+          <div class="score-input">
+            <input type="range" class="score-slider" min="1" max="5" step="0.5" value="3" id="scoreSlider">
+            <input type="number" id="score" name="score" min="1" max="5" step="0.5" value="3" required>
+          </div>
+          <div class="score-label">1 = Poor, 2 = Below Average, 3 = Average, 4 = Good, 5 = Excellent</div>
+        </div>
+
+        <div class="form-group">
+          <label>Recommendation</label>
+          <div class="recommendation-options">
+            <div class="rec-option">
+              <input type="radio" name="recommendation" id="rec-accept" value="accept">
+              <label for="rec-accept">
+                <span class="rec-icon">&#10004;</span>
+                <span class="rec-text">Accept</span>
+              </label>
+            </div>
+            <div class="rec-option">
+              <input type="radio" name="recommendation" id="rec-minor" value="minor_revision" checked>
+              <label for="rec-minor">
+                <span class="rec-icon">&#128221;</span>
+                <span class="rec-text">Minor Revision</span>
+              </label>
+            </div>
+            <div class="rec-option">
+              <input type="radio" name="recommendation" id="rec-major" value="major_revision">
+              <label for="rec-major">
+                <span class="rec-icon">&#128260;</span>
+                <span class="rec-text">Major Revision</span>
+              </label>
+            </div>
+            <div class="rec-option">
+              <input type="radio" name="recommendation" id="rec-reject" value="reject">
+              <label for="rec-reject">
+                <span class="rec-icon">&#10006;</span>
+                <span class="rec-text">Reject</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Strengths</h3>
+        <div class="list-input" id="strengthsList">
+          <div class="list-item">
+            <input type="text" name="strengths[]" placeholder="Enter a strength...">
+            <button type="button" onclick="removeItem(this)">&times;</button>
+          </div>
+        </div>
+        <button type="button" class="add-item-btn" onclick="addStrength()">+ Add Strength</button>
+      </div>
+
+      <div class="form-section">
+        <h3>Weaknesses</h3>
+        <div class="list-input" id="weaknessesList">
+          <div class="list-item">
+            <input type="text" name="weaknesses[]" placeholder="Enter a weakness...">
+            <button type="button" onclick="removeItem(this)">&times;</button>
+          </div>
+        </div>
+        <button type="button" class="add-item-btn" onclick="addWeakness()">+ Add Weakness</button>
+      </div>
+
+      <div class="form-section">
+        <h3>Detailed Comments</h3>
+        <div class="form-group">
+          <label>Provide detailed feedback for the authors</label>
+          <textarea name="detailed_comments" id="detailedComments" placeholder="Include specific suggestions for improvement, questions, and any concerns..." rows="8"></textarea>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Confidential Comments to Editor (Optional)</h3>
+        <div class="form-group">
+          <label>These comments will not be shared with authors</label>
+          <textarea name="confidential_comments" id="confidentialComments" placeholder="Any concerns about ethics, plagiarism, or other issues..." rows="4"></textarea>
+        </div>
+      </div>
+
+      <div class="submit-section">
+        <button type="submit" class="submit-btn" id="submitBtn">Submit Review</button>
+        <div class="status-message" id="statusMessage"></div>
+        <p class="confidentiality-notice">
+          Your review will be submitted to the Agentic Journal review system.
+          Reviews are conducted single-blind (reviewers anonymous to authors).
+        </p>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    // Parse URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const submissionId = params.get('submission') || 'Unknown';
+    const reviewer = params.get('reviewer') || 'Anonymous';
+    const token = params.get('token') || '';
+
+    // Display submission info
+    document.getElementById('submissionId').textContent = submissionId;
+    document.getElementById('reviewerName').textContent = '@' + reviewer;
+
+    // Sync score slider with input
+    const scoreSlider = document.getElementById('scoreSlider');
+    const scoreInput = document.getElementById('score');
+
+    scoreSlider.addEventListener('input', () => {
+      scoreInput.value = scoreSlider.value;
+    });
+
+    scoreInput.addEventListener('input', () => {
+      scoreSlider.value = scoreInput.value;
+    });
+
+    // List management functions
+    function addStrength() {
+      const list = document.getElementById('strengthsList');
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      item.innerHTML = `
+        <input type="text" name="strengths[]" placeholder="Enter a strength...">
+        <button type="button" onclick="removeItem(this)">&times;</button>
+      `;
+      list.appendChild(item);
+    }
+
+    function addWeakness() {
+      const list = document.getElementById('weaknessesList');
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      item.innerHTML = `
+        <input type="text" name="weaknesses[]" placeholder="Enter a weakness...">
+        <button type="button" onclick="removeItem(this)">&times;</button>
+      `;
+      list.appendChild(item);
+    }
+
+    function removeItem(btn) {
+      const list = btn.parentElement.parentElement;
+      if (list.children.length > 1) {
+        btn.parentElement.remove();
+      }
+    }
+
+    // Form submission
+    document.getElementById('reviewForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('submitBtn');
+      const statusMessage = document.getElementById('statusMessage');
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+
+      // Collect form data
+      const formData = new FormData(e.target);
+      const strengths = Array.from(document.querySelectorAll('input[name="strengths[]"]'))
+        .map(i => i.value.trim())
+        .filter(Boolean);
+      const weaknesses = Array.from(document.querySelectorAll('input[name="weaknesses[]"]'))
+        .map(i => i.value.trim())
+        .filter(Boolean);
+
+      const review = {
+        submission_id: submissionId,
+        reviewer: reviewer,
+        token: token,
+        score: parseFloat(formData.get('score')),
+        recommendation: formData.get('recommendation'),
+        strengths: strengths,
+        weaknesses: weaknesses,
+        detailed_comments: formData.get('detailed_comments'),
+        confidential_comments: formData.get('confidential_comments'),
+        submitted_at: new Date().toISOString()
+      };
+
+      try {
+        // Format as GitHub issue comment
+        const commentBody = `/human-review
+Score: ${review.score}
+Recommendation: ${review.recommendation}
+Strengths:
+${review.strengths.map(s => `- ${s}`).join('\n')}
+
+Weaknesses:
+${review.weaknesses.map(w => `- ${w}`).join('\n')}
+
+Detailed Comments:
+${review.detailed_comments}`;
+
+        // Copy to clipboard as fallback
+        await navigator.clipboard.writeText(commentBody);
+
+        statusMessage.className = 'status-message success';
+        statusMessage.innerHTML = `
+          <strong>Review formatted!</strong><br><br>
+          The review has been copied to your clipboard.<br>
+          Please paste it as a comment on the submission issue on GitHub.<br><br>
+          <a href="https://github.com/akz4ol/agentic-journal/issues?q=is:issue+${submissionId}" target="_blank" style="color: #10b981;">
+            Open GitHub Issues
+          </a>
+        `;
+
+        submitBtn.textContent = 'Copied to Clipboard';
+
+      } catch (error) {
+        statusMessage.className = 'status-message error';
+        statusMessage.textContent = 'Error: ' + error.message;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Review';
+      }
+    });
+
+    // Try to load AI reviews for reference
+    async function loadAIReviews() {
+      try {
+        const response = await fetch(`/agentic-journal/reviews/${submissionId}/meta-review.yaml`);
+        if (response.ok) {
+          const content = await response.text();
+          // Simple parsing
+          const technicalMatch = content.match(/technical:\s*([\d.]+)/);
+          const domainMatch = content.match(/domain:\s*([\d.]+)/);
+          const ethicsMatch = content.match(/ethics:\s*([\d.]+)/);
+          const clarityMatch = content.match(/clarity:\s*([\d.]+)/);
+
+          if (technicalMatch || domainMatch) {
+            const scoresDiv = document.getElementById('aiScores');
+            scoresDiv.innerHTML = `
+              <div class="ai-score"><span>Technical</span><span>${technicalMatch ? technicalMatch[1] : 'N/A'}/5</span></div>
+              <div class="ai-score"><span>Domain</span><span>${domainMatch ? domainMatch[1] : 'N/A'}/5</span></div>
+              <div class="ai-score"><span>Ethics</span><span>${ethicsMatch ? ethicsMatch[1] : 'N/A'}/5</span></div>
+              <div class="ai-score"><span>Clarity</span><span>${clarityMatch ? clarityMatch[1] : 'N/A'}/5</span></div>
+            `;
+            document.getElementById('aiReviews').style.display = 'block';
+          }
+        }
+      } catch (e) {
+        // AI reviews not available, that's fine
+      }
+    }
+
+    loadAIReviews();
+  </script>
+</body>
+</html>

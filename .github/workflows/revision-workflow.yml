@@ -1,0 +1,561 @@
+name: Revision Workflow
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: write
+
+jobs:
+  request-revision:
+    name: Request Revision
+    if: |
+      contains(github.event.issue.labels.*.name, 'completed') &&
+      startsWith(github.event.comment.body, '/request-revision')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process revision request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+            const issueNumber = context.issue.number;
+            const requester = context.payload.comment.user.login;
+
+            // Check if authorized (admin/write access)
+            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: requester
+            });
+
+            if (!['admin', 'write'].includes(permission.permission)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `@${requester} Only editors can request revisions.`
+              });
+              return;
+            }
+
+            // Get submission info
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            const idMatch = issue.data.body.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+            const submissionId = idMatch ? idMatch[1] : `AJ-${issueNumber}`;
+
+            // Parse revision type and deadline
+            const typeMatch = comment.match(/type:\s*(minor|major)/i);
+            const deadlineMatch = comment.match(/deadline:\s*(\d+)\s*days?/i);
+            const instructionsMatch = comment.match(/instructions:([\s\S]*?)(?=\n\/|$)/i);
+
+            const revisionType = typeMatch ? typeMatch[1].toLowerCase() : 'minor';
+            const deadlineDays = deadlineMatch ? parseInt(deadlineMatch[1]) : (revisionType === 'major' ? 30 : 14);
+            const instructions = instructionsMatch ? instructionsMatch[1].trim() : 'Please address the reviewer feedback.';
+
+            const deadline = new Date();
+            deadline.setDate(deadline.getDate() + deadlineDays);
+
+            // Count existing revisions
+            const revisionLabels = issue.data.labels.filter(l => l.name.startsWith('revision-'));
+            const revisionNumber = revisionLabels.length + 1;
+
+            // Update labels
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: 'completed'
+              });
+            } catch (e) {}
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: [`revision-${revisionNumber}`, `${revisionType}-revision`, 'awaiting-revision']
+            });
+
+            // Post revision request
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## 📝 Revision Requested
+
+**Submission ID:** ${submissionId}
+**Revision Type:** ${revisionType.toUpperCase()}
+**Revision Number:** R${revisionNumber}
+**Deadline:** ${deadline.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+
+### Instructions for Authors
+
+${instructions}
+
+---
+
+### How to Submit Your Revision
+
+1. **Reply to this issue** with your revised PDF attached
+2. Include a **response letter** addressing each reviewer comment
+3. Use the following format:
+
+\`\`\`
+/submit-revision
+
+### Response to Reviewers
+
+**Reviewer 1:**
+> Original comment
+Your response and changes made...
+
+**Reviewer 2:**
+> Original comment
+Your response and changes made...
+
+[Attach your revised PDF]
+\`\`\`
+
+---
+
+*Revision requested by @${requester} at ${new Date().toISOString()}*`
+            });
+
+  submit-revision:
+    name: Process Revision Submission
+    if: |
+      contains(github.event.issue.labels.*.name, 'awaiting-revision') &&
+      startsWith(github.event.comment.body, '/submit-revision')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check for revised PDF
+        id: check-pdf
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment.body;
+
+            // Look for PDF attachment
+            const patterns = [
+              /\[([^\]]*\.pdf)\]\((https:\/\/github\.com\/user-attachments\/[^)]+)\)/gi,
+              /(https:\/\/github\.com\/user-attachments\/files\/[^\s\)]+)/gi,
+              /(https:\/\/github\.com\/user-attachments\/assets\/[a-f0-9-]+)/gi
+            ];
+
+            for (const pattern of patterns) {
+              const match = comment.match(pattern);
+              if (match) {
+                const urlMatch = match[0].match(/(https:\/\/github\.com\/user-attachments\/[^\s\)]+)/);
+                if (urlMatch) {
+                  core.setOutput('has_pdf', 'true');
+                  core.setOutput('pdf_url', urlMatch[1]);
+                  return;
+                }
+              }
+            }
+
+            core.setOutput('has_pdf', 'false');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `No PDF detected in your revision submission. Please attach your revised PDF and try again.`
+            });
+
+      - name: Extract submission info
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        id: metadata
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+
+            const idMatch = issue.data.body.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+            const submissionId = idMatch ? idMatch[1] : `AJ-${context.issue.number}`;
+
+            // Count revision number
+            const revisionLabels = issue.data.labels.filter(l => l.name.startsWith('revision-'));
+            const revisionNumber = revisionLabels.length;
+
+            core.setOutput('submission_id', submissionId);
+            core.setOutput('revision_number', revisionNumber);
+
+      - name: Download revised PDF
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        run: |
+          SUBMISSION_ID="${{ steps.metadata.outputs.submission_id }}"
+          REVISION="${{ steps.metadata.outputs.revision_number }}"
+
+          mkdir -p submissions/${SUBMISSION_ID}/revisions
+          curl -L "${{ steps.check-pdf.outputs.pdf_url }}" \
+            -o submissions/${SUBMISSION_ID}/revisions/revision_${REVISION}.pdf
+
+          echo "Revised PDF downloaded"
+
+      - name: Save response letter
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comment = context.payload.comment.body;
+            const submissionId = '${{ steps.metadata.outputs.submission_id }}';
+            const revisionNumber = '${{ steps.metadata.outputs.revision_number }}';
+
+            // Extract response to reviewers
+            const responseMatch = comment.match(/### Response to Reviewers([\s\S]*?)(?=\[|$)/i);
+            const response = responseMatch ? responseMatch[1].trim() : comment;
+
+            // Save response letter
+            const revisionDir = `submissions/${submissionId}/revisions`;
+            fs.mkdirSync(revisionDir, { recursive: true });
+
+            const responseLetter = `# Response to Reviewers - Revision ${revisionNumber}
+
+Submitted: ${new Date().toISOString()}
+Author: ${context.payload.comment.user.login}
+
+---
+
+${response}
+`;
+
+            fs.writeFileSync(`${revisionDir}/response_${revisionNumber}.md`, responseLetter);
+            console.log('Response letter saved');
+
+      - name: Update status
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.issue.number;
+            const submissionId = '${{ steps.metadata.outputs.submission_id }}';
+            const revisionNumber = '${{ steps.metadata.outputs.revision_number }}';
+
+            // Update labels
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                name: 'awaiting-revision'
+              });
+            } catch (e) {}
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['revision-submitted', 'processing']
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## 📄 Revision R${revisionNumber} Received
+
+**Submission ID:** ${submissionId}
+
+Your revised manuscript has been received. The review process will now continue.
+
+| Stage | Status |
+|-------|--------|
+| Revision Received | Completed |
+| Re-Review | In Progress |
+| Final Decision | Pending |
+
+---
+
+*Revision received at ${new Date().toISOString()}*`
+            });
+
+      - name: Run re-review
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        run: |
+          # Run reviews on revised paper
+          for agent in technical domain ethics clarity; do
+            echo "Running $agent review on revision..."
+            python scripts/run_review.py --agent $agent --revision || true
+          done
+        env:
+          SUBMISSION_ID: ${{ steps.metadata.outputs.submission_id }}
+          REVISION_NUMBER: ${{ steps.metadata.outputs.revision_number }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        continue-on-error: true
+
+      - name: Run meta-review
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        run: python scripts/synthesize_reviews.py --revision
+        env:
+          SUBMISSION_ID: ${{ steps.metadata.outputs.submission_id }}
+          REVISION_NUMBER: ${{ steps.metadata.outputs.revision_number }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        continue-on-error: true
+
+      - name: Post re-review results
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const submissionId = '${{ steps.metadata.outputs.submission_id }}';
+            const revisionNumber = '${{ steps.metadata.outputs.revision_number }}';
+
+            let reviewComment = '';
+
+            try {
+              // Load revision meta-review
+              const path = `reviews/${submissionId}/revision_${revisionNumber}/meta-review.yaml`;
+              const content = fs.readFileSync(path, 'utf8');
+
+              // Extract fields
+              const decisionMatch = content.match(/^decision:\s*(.+)$/m);
+              const weightedMatch = content.match(/weighted_average:\s*([\d.]+)/);
+              const improvementMatch = content.match(/improvement_noted:\s*(yes|no)/i);
+
+              const decision = decisionMatch ? decisionMatch[1].trim().toUpperCase() : 'PENDING';
+              const weighted = weightedMatch ? parseFloat(weightedMatch[1]).toFixed(1) : 'N/A';
+              const improved = improvementMatch ? improvementMatch[1].toLowerCase() === 'yes' : false;
+
+              const emoji = { 'ACCEPT': '&#10004;', 'MINOR_REVISION': '&#128221;', 'MAJOR_REVISION': '&#128260;', 'REJECT': '&#10006;' }[decision] || '&#8987;';
+              const improvementEmoji = improved ? '&#128200;' : '&#128201;';
+
+              reviewComment = `## ${emoji} Revision R${revisionNumber} Review Complete
+
+**Submission ID:** ${submissionId}
+**Revised Score:** ${weighted}/5.0
+**Improvement:** ${improvementEmoji} ${improved ? 'Yes, improvements noted' : 'Issues remain'}
+
+### Decision: ${decision}
+
+${decision === 'ACCEPT' ?
+'Congratulations! Your revised manuscript has been accepted.' :
+decision === 'MINOR_REVISION' ?
+'Your revision addresses many concerns. Minor additional changes are requested.' :
+decision === 'MAJOR_REVISION' ?
+'While improvements were made, significant revisions are still needed.' :
+'Unfortunately, the revision does not sufficiently address the concerns raised.'}
+
+---
+
+*Review of revision completed at ${new Date().toISOString()}*`;
+
+            } catch (error) {
+              reviewComment = `## Re-Review Processing
+
+The revised manuscript is being reviewed. Results will be posted shortly.
+
+Error details (for debugging): ${error.message}`;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: reviewComment
+            });
+
+            // Update labels
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'processing'
+              });
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'revision-submitted'
+              });
+            } catch (e) {}
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['revision-reviewed']
+            });
+
+      - name: Commit revision materials
+        if: steps.check-pdf.outputs.has_pdf == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📝 Add revision R${{ steps.metadata.outputs.revision_number }} for ${{ steps.metadata.outputs.submission_id }}"
+          file_pattern: "submissions/** reviews/**"
+
+  final-decision:
+    name: Record Final Decision
+    if: |
+      contains(github.event.issue.labels.*.name, 'submission') &&
+      startsWith(github.event.comment.body, '/final-decision')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Process final decision
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comment = context.payload.comment.body;
+            const issueNumber = context.issue.number;
+            const editor = context.payload.comment.user.login;
+
+            // Check authorization
+            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: editor
+            });
+
+            if (!['admin', 'write'].includes(permission.permission)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `@${editor} Only editors can record final decisions.`
+              });
+              return;
+            }
+
+            // Parse decision
+            const decisionMatch = comment.match(/decision:\s*(accept|reject)/i);
+            const rationaleMatch = comment.match(/rationale:([\s\S]*?)$/i);
+
+            if (!decisionMatch) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `Invalid decision format. Use:\n\`\`\`\n/final-decision\ndecision: accept|reject\nrationale: Your explanation here\n\`\`\``
+              });
+              return;
+            }
+
+            const decision = decisionMatch[1].toLowerCase();
+            const rationale = rationaleMatch ? rationaleMatch[1].trim() : 'No rationale provided.';
+
+            // Get submission info
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            const idMatch = issue.data.body.match(/\*\*Submission ID:\*\* ([\w-]+)/);
+            const submissionId = idMatch ? idMatch[1] : `AJ-${issueNumber}`;
+            const titleMatch = issue.data.body.match(/\*\*Title:\*\*\s*(.+)/);
+            const title = titleMatch ? titleMatch[1].trim() : issue.data.title;
+
+            // Save final decision
+            const decisionRecord = {
+              submission_id: submissionId,
+              title: title,
+              decision: decision,
+              rationale: rationale,
+              editor: editor,
+              decided_at: new Date().toISOString()
+            };
+
+            const reviewDir = `reviews/${submissionId}`;
+            fs.mkdirSync(reviewDir, { recursive: true });
+            fs.writeFileSync(
+              `${reviewDir}/final-decision.json`,
+              JSON.stringify(decisionRecord, null, 2)
+            );
+
+            // Update labels
+            const labelsToRemove = ['processing', 'awaiting-revision', 'revision-submitted', 'revision-reviewed', 'needs-human-review'];
+            for (const label of labelsToRemove) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  name: label
+                });
+              } catch (e) {}
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: [decision === 'accept' ? 'accepted' : 'rejected', 'decision-final']
+            });
+
+            // Post final decision
+            const emoji = decision === 'accept' ? '&#127881;' : '&#128532;';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## ${emoji} Final Decision: ${decision.toUpperCase()}
+
+**Submission ID:** ${submissionId}
+**Title:** ${title}
+**Editor:** @${editor}
+
+### Decision Rationale
+
+${rationale}
+
+---
+
+${decision === 'accept' ?
+`Congratulations! Your paper has been accepted for publication in Agentic Journal.
+
+**Next Steps:**
+1. Prepare your camera-ready version
+2. Complete any remaining administrative tasks
+3. Your paper will be published in the next issue` :
+`Thank you for your submission. Unfortunately, we are unable to accept this paper at this time.
+
+We encourage you to address the reviewer feedback and consider resubmitting in the future.`}
+
+---
+
+*Final decision recorded at ${new Date().toISOString()}*`
+            });
+
+            // Close the issue
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              state: 'closed'
+            });
+
+      - name: Commit decision
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Final decision recorded"
+          file_pattern: "reviews/**"
