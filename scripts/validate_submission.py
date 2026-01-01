@@ -15,13 +15,24 @@ def load_config():
 
 
 def find_submission():
-    """Find the new submission in the PR."""
+    """Find the submission to validate."""
     submissions_dir = Path("submissions")
 
-    # Look for new directories in submissions/
-    for item in submissions_dir.iterdir():
-        if item.is_dir() and not item.name.startswith('.'):
-            return item
+    # Use SUBMISSION_ID env var if available
+    submission_id = os.environ.get("SUBMISSION_ID")
+    if submission_id:
+        submission_path = submissions_dir / submission_id
+        if submission_path.exists():
+            return submission_path
+        # Also try without prefix variations
+        for item in submissions_dir.iterdir():
+            if item.is_dir() and submission_id in item.name:
+                return item
+
+    # Fallback: Look for newest directory in submissions/
+    dirs = [d for d in submissions_dir.iterdir() if d.is_dir() and not d.name.startswith('.') and d.name != 'SUBMISSION_TEMPLATE']
+    if dirs:
+        return max(dirs, key=lambda d: d.stat().st_mtime)
 
     return None
 

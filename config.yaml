@@ -63,8 +63,8 @@ screening:
   plagiarism_threshold: 0.15
   min_pages: 4
   max_pages: 50  # Increased for longer papers
-  min_abstract_words: 100
-  max_abstract_words: 300
+  min_abstract_words: 30  # Lowered for portal submissions
+  max_abstract_words: 500
   required_sections:
     - abstract
     - introduction
