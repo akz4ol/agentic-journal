@@ -1,0 +1,50 @@
+# Submission Metadata Template
+# Copy this folder and fill in your details
+
+# Required Fields
+title: "Your Paper Title Here"
+
+authors:
+  - name: "First Author Name"
+    email: "first.author@institution.edu"
+    affiliation: "University or Organization"
+    orcid: "0000-0000-0000-0000"  # Optional
+  - name: "Second Author Name"
+    email: "second.author@institution.edu"
+    affiliation: "University or Organization"
+
+abstract: |
+  Your abstract goes here. It should be between 150-300 words.
+  Provide a clear summary of your research including:
+  - The problem being addressed
+  - Your methodology/approach
+  - Key findings and contributions
+  - Implications of the work
+
+keywords:
+  - keyword1
+  - keyword2
+  - keyword3
+  - keyword4
+  - keyword5
+
+# Paper type: research, position, survey, technical, tutorial
+paper_type: research
+
+# Optional Fields
+funding: "Acknowledgment of funding sources if applicable"
+
+conflicts: "Any conflicts of interest to declare"
+
+data_availability: |
+  Description of where data/code can be accessed if applicable
+
+supplementary_materials:
+  - type: code
+    url: "https://github.com/username/repo"
+  - type: data
+    url: "https://example.com/dataset"
+
+# For revised submissions only
+previous_submission_id: ""
+revision_notes: ""

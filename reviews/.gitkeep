@@ -1,0 +1,9 @@
+# Reviews Directory
+
+Agent reviews are stored here automatically by the review pipeline.
+Each submission gets its own subdirectory with:
+- technical.yaml
+- domain.yaml
+- ethics.yaml
+- clarity.yaml
+- meta-review.yaml
