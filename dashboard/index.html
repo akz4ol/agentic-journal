@@ -728,45 +728,16 @@ function renderReviewReport(submissionId, review) {
 }
 
 async function downloadReport(submissionId) {
-  // Generate PDF report
-  const reportWindow = window.open('', '_blank');
-  reportWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Review Report - ${submissionId}</title>
-      <style>
-        body { font-family: Georgia, serif; max-width: 800px; margin: 0 auto; padding: 2rem; }
-        h1 { color: #1a365d; border-bottom: 2px solid #1a365d; }
-        h2 { color: #2d3748; margin-top: 2rem; }
-        .header { text-align: center; margin-bottom: 2rem; }
-        .score-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-        .score-table th, .score-table td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
-        .score-table th { background: #f8f9fa; }
-        .decision { font-size: 1.5rem; font-weight: bold; padding: 1rem; text-align: center; margin: 1rem 0; }
-        .accept { background: #d4edda; color: #155724; }
-        .minor_revision { background: #fff3cd; color: #856404; }
-        .major_revision { background: #f8d7da; color: #721c24; }
-        .reject { background: #dc3545; color: white; }
-        .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ddd; font-size: 0.9rem; color: #666; }
-        @media print { body { padding: 0; } }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>Agentic Journal</h1>
-        <h2>Peer Review Report</h2>
-        <p>Submission ID: ${submissionId}</p>
-        <p>Generated: ${new Date().toLocaleDateString()}</p>
-      </div>
-      <p>Loading review data...</p>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"><\/script>
-    </body>
-    </html>
-  `);
+  // Show loading state
+  const btn = event?.target;
+  const originalText = btn?.textContent;
+  if (btn) {
+    btn.textContent = 'Generating...';
+    btn.disabled = true;
+  }
 
-  // Fetch and render review
   try {
+    // Fetch and parse YAML first (before opening window)
     const response = await fetch(
       `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/reviews/${submissionId}/meta-review.yaml`,
       {
@@ -774,82 +745,143 @@ async function downloadReport(submissionId) {
       }
     );
 
+    if (!response.ok) throw new Error('Review not found');
+
     const data = await response.json();
     const content = atob(data.content);
+    const review = jsyaml.load(content);
 
-    reportWindow.document.body.innerHTML = generatePDFReport(submissionId, content);
+    // Generate complete HTML with all data pre-rendered
+    const htmlContent = generatePDFReport(submissionId, review);
 
-    // Trigger print dialog
-    setTimeout(() => reportWindow.print(), 500);
+    // Open print window with complete content
+    const reportWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!reportWindow) {
+      alert('Please allow popups to download the PDF report');
+      return;
+    }
+
+    reportWindow.document.write(htmlContent);
+    reportWindow.document.close();
+
+    // Wait for content to render, then print
+    reportWindow.onload = function() {
+      setTimeout(() => {
+        reportWindow.print();
+      }, 300);
+    };
 
   } catch (error) {
-    reportWindow.document.body.innerHTML = `<h1>Error</h1><p>Could not load review: ${error.message}</p>`;
+    console.error('Download error:', error);
+    alert('Could not generate report: ' + error.message);
+  } finally {
+    if (btn) {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
   }
 }
 
-function generatePDFReport(submissionId, yamlContent) {
-  // Parse YAML in the new window context
-  return `
-    <div class="header">
-      <h1>Agentic Journal</h1>
-      <h2>Peer Review Report</h2>
-      <p><strong>Submission ID:</strong> ${submissionId}</p>
-      <p><strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
-    </div>
+function generatePDFReport(submissionId, review) {
+  const synthesis = review.synthesis || {};
+  const decision = review.decision || 'pending';
+  const decisionDisplay = decision.toUpperCase().replace('_', ' ');
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"><\/script>
-    <script>
-      const review = jsyaml.load(\`${yamlContent.replace(/`/g, '\\`')}\`);
-      const synthesis = review.synthesis || {};
+  // Pre-render all sections
+  const actionItemsHtml = review.author_action_items?.length ? `
+    <h2>Required Actions</h2>
+    <ul>
+      ${review.author_action_items.map(item => `<li><strong>[${item.priority}]</strong> ${escapeHtml(item.action)}</li>`).join('')}
+    </ul>
+  ` : '';
 
-      document.body.innerHTML += \`
-        <div class="decision \${review.decision}">
-          Decision: \${review.decision?.toUpperCase().replace('_', ' ') || 'PENDING'}
-        </div>
+  const strengthsHtml = synthesis.consensus_strengths?.length ? `
+    <h2>Strengths</h2>
+    <ul>${synthesis.consensus_strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
+  ` : '';
 
-        <h2>Score Summary</h2>
-        <table class="score-table">
-          <tr><th>Reviewer</th><th>Score</th></tr>
-          <tr><td>Technical</td><td>\${synthesis.score_breakdown?.technical?.toFixed(1) || 'N/A'}</td></tr>
-          <tr><td>Domain</td><td>\${synthesis.score_breakdown?.domain?.toFixed(1) || 'N/A'}</td></tr>
-          <tr><td>Ethics</td><td>\${synthesis.score_breakdown?.ethics?.toFixed(1) || 'N/A'}</td></tr>
-          <tr><td>Clarity</td><td>\${synthesis.score_breakdown?.clarity?.toFixed(1) || 'N/A'}</td></tr>
-          <tr><th>Weighted Average</th><th>\${synthesis.weighted_average?.toFixed(1) || 'N/A'}</th></tr>
-        </table>
+  const concernsHtml = synthesis.consensus_concerns?.length ? `
+    <h2>Areas for Improvement</h2>
+    <ul>${synthesis.consensus_concerns.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>
+  ` : '';
 
-        <h2>Decision Rationale</h2>
-        <p>\${review.rationale || 'No rationale provided.'}</p>
+  const guidanceHtml = review.revision_guidance ? `
+    <h2>Revision Guidance</h2>
+    <p>${escapeHtml(review.revision_guidance)}</p>
+  ` : '';
 
-        \${review.author_action_items?.length ? \`
-          <h2>Required Actions</h2>
-          <ul>
-            \${review.author_action_items.map(item => \`<li><strong>[\${item.priority}]</strong> \${item.action}</li>\`).join('')}
-          </ul>
-        \` : ''}
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Review Report - ${submissionId}</title>
+  <style>
+    body { font-family: Georgia, serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+    h1 { color: #1a365d; border-bottom: 2px solid #1a365d; padding-bottom: 0.5rem; }
+    h2 { color: #2d3748; margin-top: 2rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25rem; }
+    .header { text-align: center; margin-bottom: 2rem; }
+    .header p { margin: 0.25rem 0; color: #666; }
+    .score-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    .score-table th, .score-table td { border: 1px solid #ddd; padding: 0.75rem; text-align: left; }
+    .score-table th { background: #f8f9fa; font-weight: 600; }
+    .score-table tr:last-child { font-weight: bold; background: #f0f4f8; }
+    .decision { font-size: 1.25rem; font-weight: bold; padding: 1rem; text-align: center; margin: 1.5rem 0; border-radius: 8px; }
+    .decision-accept { background: #d4edda; color: #155724; }
+    .decision-minor_revision { background: #fff3cd; color: #856404; }
+    .decision-major_revision { background: #f8d7da; color: #721c24; }
+    .decision-reject { background: #dc3545; color: white; }
+    ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+    li { margin-bottom: 0.5rem; }
+    .footer { margin-top: 3rem; padding-top: 1rem; border-top: 2px solid #e2e8f0; font-size: 0.85rem; color: #666; text-align: center; }
+    @media print {
+      body { padding: 0; margin: 1cm; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Agentic Journal</h1>
+    <h2 style="border: none; margin-top: 0;">Peer Review Report</h2>
+    <p><strong>Submission ID:</strong> ${submissionId}</p>
+    <p><strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
+  </div>
 
-        \${synthesis.consensus_strengths?.length ? \`
-          <h2>Strengths</h2>
-          <ul>\${synthesis.consensus_strengths.map(s => \`<li>\${s}</li>\`).join('')}</ul>
-        \` : ''}
+  <div class="decision decision-${decision}">
+    Decision: ${decisionDisplay}
+  </div>
 
-        \${synthesis.consensus_concerns?.length ? \`
-          <h2>Areas for Improvement</h2>
-          <ul>\${synthesis.consensus_concerns.map(c => \`<li>\${c}</li>\`).join('')}</ul>
-        \` : ''}
+  <h2>Score Summary</h2>
+  <table class="score-table">
+    <tr><th>Reviewer</th><th>Score</th></tr>
+    <tr><td>Technical</td><td>${synthesis.score_breakdown?.technical?.toFixed(1) || 'N/A'}</td></tr>
+    <tr><td>Domain</td><td>${synthesis.score_breakdown?.domain?.toFixed(1) || 'N/A'}</td></tr>
+    <tr><td>Ethics</td><td>${synthesis.score_breakdown?.ethics?.toFixed(1) || 'N/A'}</td></tr>
+    <tr><td>Clarity</td><td>${synthesis.score_breakdown?.clarity?.toFixed(1) || 'N/A'}</td></tr>
+    <tr><td>Weighted Average</td><td>${synthesis.weighted_average?.toFixed(1) || 'N/A'} / 5.0</td></tr>
+  </table>
 
-        \${review.revision_guidance ? \`
-          <h2>Revision Guidance</h2>
-          <p>\${review.revision_guidance}</p>
-        \` : ''}
+  <h2>Decision Rationale</h2>
+  <p>${escapeHtml(review.rationale || 'No rationale provided.')}</p>
 
-        <div class="footer">
-          <p>This review was generated by the Agentic Journal multi-agent peer review system.</p>
-          <p>Reviews are AI-generated and should be evaluated critically.</p>
-          <p>For more information, visit: https://akz4ol.github.io/agentic-journal/</p>
-        </div>
-      \`;
-    <\/script>
-  `;
+  ${actionItemsHtml}
+  ${strengthsHtml}
+  ${concernsHtml}
+  ${guidanceHtml}
+
+  <div class="footer">
+    <p>This review was generated by the Agentic Journal multi-agent peer review system.</p>
+    <p>Reviews are AI-generated and should be evaluated critically.</p>
+    <p>https://akz4ol.github.io/agentic-journal/</p>
+  </div>
+</body>
+</html>`;
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 </script>
 
