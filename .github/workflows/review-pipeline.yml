@@ -1,0 +1,183 @@
+name: Review Pipeline
+
+on:
+  pull_request:
+    paths:
+      - 'submissions/**'
+    types: [opened, synchronize]
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  validate:
+    name: Validate Submission
+    runs-on: ubuntu-latest
+    outputs:
+      submission_id: ${{ steps.validate.outputs.submission_id }}
+      valid: ${{ steps.validate.outputs.valid }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate submission
+        id: validate
+        run: python scripts/validate_submission.py
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+      - name: Comment on validation failure
+        if: steps.validate.outputs.valid == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Validation Failed**\n\nPlease fix the issues and update your submission.'
+            })
+
+  review:
+    name: Agent Review
+    needs: validate
+    if: needs.validate.outputs.valid == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        agent: [technical, domain, ethics, clarity]
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ${{ matrix.agent }} review
+        run: python scripts/run_review.py --agent ${{ matrix.agent }}
+        env:
+          SUBMISSION_ID: ${{ needs.validate.outputs.submission_id }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Upload review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-${{ matrix.agent }}
+          path: reviews/${{ needs.validate.outputs.submission_id }}/${{ matrix.agent }}.yaml
+
+  synthesize:
+    name: Meta-Review
+    needs: [validate, review]
+    runs-on: ubuntu-latest
+    outputs:
+      decision: ${{ steps.meta.outputs.decision }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download all reviews
+        uses: actions/download-artifact@v4
+        with:
+          path: reviews/${{ needs.validate.outputs.submission_id }}
+          pattern: review-*
+          merge-multiple: true
+
+      - name: Run meta-review
+        id: meta
+        run: python scripts/synthesize_reviews.py
+        env:
+          SUBMISSION_ID: ${{ needs.validate.outputs.submission_id }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Upload meta-review
+        uses: actions/upload-artifact@v4
+        with:
+          name: meta-review
+          path: reviews/${{ needs.validate.outputs.submission_id }}/meta-review.yaml
+
+  notify:
+    name: Post Results
+    needs: [validate, synthesize]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download all reviews
+        uses: actions/download-artifact@v4
+        with:
+          path: reviews/${{ needs.validate.outputs.submission_id }}
+          merge-multiple: true
+
+      - name: Post review comment
+        run: python scripts/notify.py
+        env:
+          SUBMISSION_ID: ${{ needs.validate.outputs.submission_id }}
+          DECISION: ${{ needs.synthesize.outputs.decision }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    name: Publish Paper
+    needs: [validate, synthesize]
+    if: needs.synthesize.outputs.decision == 'accept'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Generate paper page
+        run: |
+          echo "Paper publication would happen here"
+          # python scripts/publish_paper.py
+        env:
+          SUBMISSION_ID: ${{ needs.validate.outputs.submission_id }}
+
+      - name: Commit published paper
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📄 Publish paper ${{ needs.validate.outputs.submission_id }}"
+          file_pattern: "_posts/*.md reviews/**"

@@ -1,0 +1,86 @@
+# Agentic Journal Configuration
+
+journal:
+  name: "Agentic Journal"
+  url: "https://akz4ol.github.io/agentic-journal"
+  submission_prefix: "AJ"
+  year: 2026
+
+review:
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 4096
+  temperature: 0.3
+
+  agents:
+    technical:
+      enabled: true
+      weight: 1.0
+      dimensions:
+        - methodology
+        - validity
+        - reproducibility
+        - technical_accuracy
+    domain:
+      enabled: true
+      weight: 1.0
+      dimensions:
+        - novelty
+        - significance
+        - literature_coverage
+        - evidence_quality
+    ethics:
+      enabled: true
+      weight: 0.8
+      dimensions:
+        - ethical_compliance
+        - misuse_risk
+        - bias_consideration
+        - societal_impact
+    clarity:
+      enabled: true
+      weight: 0.8
+      dimensions:
+        - writing_quality
+        - figure_effectiveness
+        - structure
+        - accessibility
+
+  thresholds:
+    accept: 4.0
+    minor_revision: 3.5
+    major_revision: 3.0
+
+screening:
+  plagiarism_threshold: 0.15
+  min_pages: 4
+  max_pages: 15
+  min_abstract_words: 100
+  max_abstract_words: 300
+  required_sections:
+    - abstract
+    - introduction
+    - conclusion
+    - references
+
+paper_types:
+  research:
+    review_type: full
+    timeline_days: 21
+  technical:
+    review_type: technical
+    timeline_days: 14
+  survey:
+    review_type: full
+    timeline_days: 21
+  preprint:
+    review_type: screening
+    timeline_days: 3
+
+notifications:
+  github_comment: true
+  create_issue: true
+
+publishing:
+  auto_publish: true
+  include_reviews: true
+  license: "CC-BY-4.0"
