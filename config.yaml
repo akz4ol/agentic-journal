@@ -6,6 +6,10 @@ journal:
   submission_prefix: "AJ"
   year: 2026
 
+rate_limits:
+  daily_reviews: 2  # Maximum reviews per day (API cost management)
+  queued_message: "Your submission is queued and will be reviewed tomorrow."
+
 review:
   model: "claude-sonnet-4-20250514"
   max_tokens: 4096

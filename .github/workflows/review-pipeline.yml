@@ -8,10 +8,68 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
+  DAILY_REVIEW_LIMIT: 2
 
 jobs:
+  rate-limit:
+    name: Check Daily Limit
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.check.outputs.allowed }}
+      count: ${{ steps.check.outputs.count }}
+    steps:
+      - name: Check daily review count
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const today = new Date().toISOString().split('T')[0];
+
+            // Get workflow runs for today
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'review-pipeline.yml',
+              created: `>=${today}`,
+              status: 'completed',
+              conclusion: 'success'
+            });
+
+            const count = runs.data.total_count;
+            const limit = parseInt('${{ env.DAILY_REVIEW_LIMIT }}');
+            const allowed = count < limit;
+
+            console.log(`Reviews today: ${count}/${limit}`);
+            console.log(`New review allowed: ${allowed}`);
+
+            core.setOutput('count', count);
+            core.setOutput('allowed', allowed);
+
+      - name: Comment if rate limited
+        if: steps.check.outputs.allowed == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const count = '${{ steps.check.outputs.count }}';
+            const limit = '${{ env.DAILY_REVIEW_LIMIT }}';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `⏳ **Daily Review Limit Reached**\n\nWe've processed ${count}/${limit} reviews today. Your submission is queued and will be reviewed tomorrow.\n\nThis limit helps us manage API costs while maintaining review quality. Thank you for your patience!`
+            });
+
+      - name: Fail if rate limited
+        if: steps.check.outputs.allowed == 'false'
+        run: |
+          echo "Daily review limit reached (${{ steps.check.outputs.count }}/${{ env.DAILY_REVIEW_LIMIT }})"
+          exit 1
+
   validate:
     name: Validate Submission
+    needs: rate-limit
+    if: needs.rate-limit.outputs.allowed == 'true'
     runs-on: ubuntu-latest
     outputs:
       submission_id: ${{ steps.validate.outputs.submission_id }}
@@ -48,8 +106,8 @@ jobs:
 
   review:
     name: Agent Review
-    needs: validate
-    if: needs.validate.outputs.valid == 'true'
+    needs: [rate-limit, validate]
+    if: needs.rate-limit.outputs.allowed == 'true' && needs.validate.outputs.valid == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
