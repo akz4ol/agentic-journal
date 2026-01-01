@@ -10,59 +10,12 @@ env:
   PYTHON_VERSION: '3.11'
 
 jobs:
-  # When a new submission issue is created, add instructions
-  welcome:
-    name: Welcome Submission
-    if: github.event_name == 'issues' && github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'submission')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Post welcome comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const body = `## 📄 Submission Received!
-
-            Thank you for your submission. To complete the process:
-
-            ### Next Step: Upload Your PDF
-
-            Please **reply to this issue** with your paper PDF attached.
-
-            Simply drag and drop your PDF file into the comment box below, or click the attach button.
-
-            ---
-
-            Once you upload the PDF, our automated review system will:
-            1. ✅ Validate your submission
-            2. 🤖 Run 4 specialized AI reviewers
-            3. 📊 Synthesize results
-            4. 📝 Post review feedback here
-
-            **Expected timeline:** 1-2 hours after PDF upload
-
-            ---
-            *This is an automated message from the Agentic Journal submission system.*
-            `;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-
-            // Add waiting-for-pdf label
-            github.rest.issues.addLabels({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              labels: ['waiting-for-pdf']
-            });
-
-  # When a comment is added with a PDF, process the submission
-  process-pdf:
-    name: Process PDF Upload
-    if: github.event_name == 'issue_comment' && contains(github.event.issue.labels.*.name, 'submission')
+  # Process submission when issue is created with PDF attached
+  process-submission:
+    name: Process Submission
+    if: |
+      (github.event_name == 'issues' && github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'submission')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.issue.labels.*.name, 'submission'))
     runs-on: ubuntu-latest
     steps:
       - name: Check for PDF attachment
@@ -70,26 +23,68 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const comment = context.payload.comment.body;
+            // Get the content to check (issue body or comment)
+            let content = '';
+            if (context.eventName === 'issues') {
+              content = context.payload.issue.body || '';
+            } else {
+              content = context.payload.comment.body || '';
+            }
 
-            // Look for PDF attachment in comment
-            // GitHub attachment format: ![filename](url) or [filename](url)
-            const pdfMatch = comment.match(/\[([^\]]+\.pdf)\]\((https:\/\/github\.com\/[^)]+)\)/i) ||
-                            comment.match(/\(https:\/\/github\.com\/user-attachments\/[^)]+\.pdf[^)]*\)/i);
+            console.log('Checking content for PDF...');
 
-            if (pdfMatch) {
-              // Extract URL - handle different formats
-              let pdfUrl = pdfMatch[0].match(/\((https:\/\/[^)]+)\)/);
-              if (pdfUrl) {
-                core.setOutput('has_pdf', 'true');
-                core.setOutput('pdf_url', pdfUrl[1]);
-                console.log('Found PDF:', pdfUrl[1]);
-              } else {
-                core.setOutput('has_pdf', 'false');
+            // Look for PDF attachment - GitHub uses various formats
+            // Format 1: [filename.pdf](https://github.com/user-attachments/...)
+            // Format 2: ![filename](https://github.com/user-attachments/...)
+            const patterns = [
+              /\[([^\]]*\.pdf)\]\((https:\/\/github\.com\/user-attachments\/assets\/[^)]+)\)/gi,
+              /\[([^\]]*)\]\((https:\/\/github\.com\/user-attachments\/assets\/[^)]+\.pdf[^)]*)\)/gi,
+              /(https:\/\/github\.com\/user-attachments\/assets\/[a-f0-9-]+)/gi
+            ];
+
+            let pdfUrl = null;
+            for (const pattern of patterns) {
+              const match = content.match(pattern);
+              if (match) {
+                // Extract the URL
+                const urlMatch = match[0].match(/(https:\/\/github\.com\/user-attachments\/assets\/[a-f0-9-]+)/);
+                if (urlMatch) {
+                  pdfUrl = urlMatch[1];
+                  break;
+                }
               }
+            }
+
+            if (pdfUrl) {
+              core.setOutput('has_pdf', 'true');
+              core.setOutput('pdf_url', pdfUrl);
+              console.log('Found PDF URL:', pdfUrl);
             } else {
               core.setOutput('has_pdf', 'false');
-              console.log('No PDF found in comment');
+              console.log('No PDF found');
+
+              // If this is a new issue without PDF, post instructions
+              if (context.eventName === 'issues') {
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `## 📄 Submission Received!
+
+⚠️ **No PDF detected in your submission.**
+
+Please reply to this issue with your paper PDF attached (drag & drop the file into the comment box).
+
+Once you attach the PDF, the automated review will begin.`
+                });
+
+                await github.rest.issues.addLabels({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  labels: ['waiting-for-pdf']
+                });
+              }
             }
 
       - name: Checkout

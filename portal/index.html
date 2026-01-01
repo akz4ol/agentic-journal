@@ -472,52 +472,39 @@ async function handleSubmission(e) {
 
   const form = e.target;
   const formData = new FormData(form);
-  const token = localStorage.getItem('github_token');
 
-  // Show loading
-  document.getElementById('submission-form').style.display = 'none';
-  document.getElementById('submission-status').style.display = 'block';
+  // Check if PDF is selected
+  const pdfFile = formData.get('pdf');
+  if (!pdfFile || !pdfFile.name) {
+    alert('Please select a PDF file to upload');
+    return;
+  }
 
-  try {
-    // Generate submission ID
-    const submissionId = `AJ-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
+  // Generate submission ID
+  const submissionId = `AJ-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase()}`;
 
-    // Collect form data
-    const title = formData.get('title');
-    const abstract = formData.get('abstract');
-    const paperType = formData.get('paper_type');
-    const keywords = formData.get('keywords').split(',').map(k => k.trim());
+  // Collect form data
+  const title = formData.get('title');
+  const abstract = formData.get('abstract');
+  const paperType = formData.get('paper_type');
+  const keywords = formData.get('keywords').split(',').map(k => k.trim());
 
-    // Collect authors
-    const authors = [];
-    let i = 1;
-    while (formData.get(`author_name_${i}`)) {
-      if (formData.get(`author_name_${i}`).trim()) {
-        authors.push({
-          name: formData.get(`author_name_${i}`),
-          email: formData.get(`author_email_${i}`),
-          affiliation: formData.get(`author_affiliation_${i}`) || ''
-        });
-      }
-      i++;
+  // Collect authors
+  const authors = [];
+  let i = 1;
+  while (formData.get(`author_name_${i}`)) {
+    if (formData.get(`author_name_${i}`).trim()) {
+      authors.push({
+        name: formData.get(`author_name_${i}`),
+        email: formData.get(`author_email_${i}`),
+        affiliation: formData.get(`author_affiliation_${i}`) || ''
+      });
     }
+    i++;
+  }
 
-    // Create metadata
-    const metadata = {
-      title,
-      authors,
-      abstract,
-      keywords,
-      paper_type: paperType,
-      code_url: formData.get('code_url') || null,
-      data_url: formData.get('data_url') || null,
-      submitted_at: new Date().toISOString()
-    };
-
-    // Create GitHub issue for submission tracking
-    document.getElementById('status-message').textContent = 'Creating submission...';
-
-    const issueBody = `## New Paper Submission
+  // Create issue body with all metadata
+  const issueBody = `## New Paper Submission
 
 **Submission ID:** ${submissionId}
 **Title:** ${title}
@@ -530,45 +517,62 @@ ${abstract}
 ### Keywords
 ${keywords.join(', ')}
 
+${formData.get('code_url') ? `**Code:** ${formData.get('code_url')}` : ''}
+${formData.get('data_url') ? `**Data:** ${formData.get('data_url')}` : ''}
+
+---
+
+## 📎 ATTACH YOUR PDF BELOW
+
+**Drag and drop your PDF file into this text area before submitting.**
+
+The file "${pdfFile.name}" should be attached here:
+
+
+
 ---
 *Submitted via Agentic Journal Portal*
 `;
 
-    const issueResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `token ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        title: `[Submission] ${title}`,
-        body: issueBody,
-        labels: ['submission', paperType]
-      })
-    });
+  // Store submission locally
+  const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
+  submissions.push({
+    id: submissionId,
+    title,
+    status: 'pending',
+    submitted_at: new Date().toISOString()
+  });
+  localStorage.setItem('submissions', JSON.stringify(submissions));
 
-    if (!issueResponse.ok) {
-      throw new Error('Failed to create submission');
-    }
+  // Redirect to GitHub new issue page with pre-filled content
+  const issueTitle = encodeURIComponent(`[Submission] ${title}`);
+  const issueBodyEncoded = encodeURIComponent(issueBody);
+  const labels = encodeURIComponent(`submission,${paperType}`);
 
-    // Store submission locally
-    const submissions = JSON.parse(localStorage.getItem('submissions') || '[]');
-    submissions.push({
-      id: submissionId,
-      title,
-      status: 'pending',
-      submitted_at: new Date().toISOString()
-    });
-    localStorage.setItem('submissions', JSON.stringify(submissions));
+  const githubIssueUrl = `https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/new?title=${issueTitle}&body=${issueBodyEncoded}&labels=${labels}`;
 
-    // Show success
+  // Show instructions modal
+  document.getElementById('submission-form').style.display = 'none';
+  document.getElementById('submission-status').style.display = 'block';
+  document.getElementById('status-message').innerHTML = `
+    <h3>Almost Done!</h3>
+    <p>Click the button below to open GitHub and complete your submission.</p>
+    <p><strong>Important:</strong> On the GitHub page, drag your PDF file into the text area before clicking "Submit new issue".</p>
+    <br>
+    <a href="${githubIssueUrl}" target="_blank" class="btn btn-primary btn-large" onclick="showSuccess()">
+      Open GitHub to Attach PDF & Submit
+    </a>
+    <br><br>
+    <p style="font-size: 0.9rem; color: #666;">Your submission ID: <strong>${submissionId}</strong></p>
+  `;
+}
+
+function showSuccess() {
+  setTimeout(() => {
     document.getElementById('submission-status').style.display = 'none';
     document.getElementById('submission-success').style.display = 'block';
-    document.getElementById('submission-id').textContent = submissionId;
-
-  } catch (error) {
-    console.error('Submission error:', error);
-    document.getElementById('status-message').textContent = 'Error: ' + error.message;
-  }
+    document.getElementById('submission-id').textContent = localStorage.getItem('submissions') ?
+      JSON.parse(localStorage.getItem('submissions')).slice(-1)[0]?.id : 'Check GitHub';
+  }, 1000);
 }
 </script>
