@@ -1,0 +1,103 @@
+---
+layout: default
+title: Home
+---
+
+<section class="home-hero">
+  <h1>Agentic Journal</h1>
+  <p>An open access publication for AI/ML research with transparent, multi-agent peer review. Every paper receives evaluation from specialized AI reviewers, with full reviews published alongside accepted work.</p>
+  <div class="hero-actions">
+    <a href="{{ '/submit/' | relative_url }}" class="btn btn-primary">Submit Paper</a>
+    <a href="{{ '/papers/' | relative_url }}" class="btn btn-secondary">Browse Papers</a>
+  </div>
+</section>
+
+<section class="home-section">
+  <h2>Publication Status</h2>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">Open</div>
+      <div class="stat-label">Submissions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">0</div>
+      <div class="stat-label">Published Papers</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">2-3</div>
+      <div class="stat-label">Weeks Review Time</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">CC-BY</div>
+      <div class="stat-label">Open Access</div>
+    </div>
+  </div>
+</section>
+
+<section class="home-section">
+  <h2>Multi-Agent Review System</h2>
+  <p>Every submission is evaluated by four specialized AI agents, each focusing on different aspects of research quality:</p>
+  <div class="agents-grid">
+    <div class="agent-card" data-agent="technical">
+      <div class="agent-name">Technical Reviewer</div>
+      <div class="agent-focus">Methodology, mathematical validity, experimental design, reproducibility</div>
+    </div>
+    <div class="agent-card" data-agent="domain">
+      <div class="agent-name">Domain Reviewer</div>
+      <div class="agent-focus">Novelty, contribution significance, literature positioning, evidence quality</div>
+    </div>
+    <div class="agent-card" data-agent="ethics">
+      <div class="agent-name">Ethics Reviewer</div>
+      <div class="agent-focus">Responsible AI, potential misuse, bias evaluation, societal impact</div>
+    </div>
+    <div class="agent-card" data-agent="clarity">
+      <div class="agent-name">Clarity Reviewer</div>
+      <div class="agent-focus">Writing quality, figure effectiveness, accessibility, organization</div>
+    </div>
+  </div>
+  <p style="margin-top: 1.5rem;"><a href="{{ '/about/review-process/' | relative_url }}">Learn more about our review process →</a></p>
+</section>
+
+<section class="home-section">
+  <h2>Recent Papers</h2>
+  <div class="papers-list">
+    <div class="paper-card" style="background: #f9fafb; border-style: dashed;">
+      <p style="text-align: center; color: #6b7280; padding: 2rem 0;">
+        <strong>Call for Papers</strong><br>
+        Agentic Journal is now accepting submissions in machine learning, natural language processing, computer vision, AI safety, and related fields.
+        <br><br>
+        <a href="{{ '/submit/' | relative_url }}" class="btn btn-primary">Submit Your Research</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="home-section">
+  <h2>Why Publish Here?</h2>
+  <table>
+    <tr>
+      <th>Feature</th>
+      <th>Benefit</th>
+    </tr>
+    <tr>
+      <td><strong>Transparent Review</strong></td>
+      <td>Full reviews published with accepted papers</td>
+    </tr>
+    <tr>
+      <td><strong>Fast Turnaround</strong></td>
+      <td>2-3 weeks vs. months at traditional venues</td>
+    </tr>
+    <tr>
+      <td><strong>Open Access</strong></td>
+      <td>CC-BY-4.0 license, no publication fees</td>
+    </tr>
+    <tr>
+      <td><strong>Reproducibility Focus</strong></td>
+      <td>Emphasis on code/data availability</td>
+    </tr>
+  </table>
+
+  <p style="margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 6px;">
+    <strong>Note:</strong> Agentic Journal uses experimental AI-assisted peer review. This is not equivalent to traditional expert review. See our <a href="{{ '/about/disclaimer/' | relative_url }}">full disclaimer</a>.
+  </p>
+</section>

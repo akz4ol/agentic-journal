@@ -1,0 +1,98 @@
+# Agentic Journal - AI Research with Transparent Peer Review
+# GitHub Pages Jekyll Configuration
+
+title: Agentic Journal
+tagline: "Open Access AI Research with Transparent Agentic Peer Review"
+description: "An experimental scholarly publication using multi-agent AI systems for transparent peer review of AI/ML research."
+url: "https://akz4ol.github.io"
+baseurl: "/agentic-journal"
+
+# Branding
+logo: /assets/images/logo.svg
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: /papers/:year/:title/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "paper"
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "page"
+
+# Navigation
+nav:
+  - title: Home
+    url: /
+  - title: Papers
+    url: /papers/
+  - title: Preprints
+    url: /preprints/
+  - title: Submit
+    url: /submit/
+  - title: Review Process
+    url: /about/review-process/
+  - title: About
+    url: /about/
+
+# Review Agents
+review_agents:
+  - id: technical
+    name: Technical Reviewer
+    focus: Methodology, validity, reproducibility
+    color: "#2563eb"
+  - id: domain
+    name: Domain Reviewer
+    focus: Novelty, significance, literature
+    color: "#7c3aed"
+  - id: ethics
+    name: Ethics Reviewer
+    focus: Responsible AI, bias, impact
+    color: "#dc2626"
+  - id: clarity
+    name: Clarity Reviewer
+    focus: Writing, figures, accessibility
+    color: "#059669"
+
+# Submission types
+paper_types:
+  - id: research
+    name: Research Paper
+    review: full
+    timeline: "2-3 weeks"
+  - id: technical
+    name: Technical Report
+    review: technical
+    timeline: "1-2 weeks"
+  - id: survey
+    name: Survey Article
+    review: full
+    timeline: "2-3 weeks"
+  - id: preprint
+    name: Preprint
+    review: screening
+    timeline: "1-3 days"
+
+# Social
+social:
+  github: akz4ol
+
+# Exclude from build
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag

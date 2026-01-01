@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
+  <meta name="description" content="{{ page.description | default: site.description }}">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+</head>
+<body>
+  <div class="notice-bar">
+    <strong>Experimental Publication:</strong> This journal uses AI-assisted peer review. <a href="{{ '/about/disclaimer/' | relative_url }}">Read disclaimer</a>
+  </div>
+
+  <header class="site-header">
+    <div class="header-content">
+      <a href="{{ '/' | relative_url }}" class="site-logo">
+        <span class="logo-icon">AJ</span>
+        <div class="logo-text">
+          <span class="site-name">{{ site.title }}</span>
+          <span class="site-tagline">{{ site.tagline }}</span>
+        </div>
+      </a>
+
+      <nav class="main-nav">
+        {% for item in site.nav %}
+        <a href="{{ item.url | relative_url }}" {% if page.url == item.url %}class="active"{% endif %}>
+          {{ item.title }}
+        </a>
+        {% endfor %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="site-main">
+    {{ content }}
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h4>{{ site.title }}</h4>
+        <p>{{ site.description }}</p>
+      </div>
+      <div class="footer-section">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="{{ '/submit/' | relative_url }}">Submit Paper</a></li>
+          <li><a href="{{ '/about/review-process/' | relative_url }}">Review Process</a></li>
+          <li><a href="{{ '/about/for-authors/' | relative_url }}">Author Resources</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>About</h4>
+        <ul>
+          <li><a href="{{ '/about/' | relative_url }}">About Us</a></li>
+          <li><a href="{{ '/about/disclaimer/' | relative_url }}">Disclaimer</a></li>
+          <li><a href="https://github.com/{{ site.social.github }}/agentic-journal">GitHub</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>Content is AI-generated and under review. Not a substitute for traditional peer review.</p>
+      <p>&copy; {{ site.time | date: "%Y" }} {{ site.title }}. Open Access under CC-BY-4.0.</p>
+    </div>
+  </footer>
+</body>
+</html>

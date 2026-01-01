@@ -1,0 +1,90 @@
+---
+layout: default
+---
+<article class="paper-page">
+  <header class="paper-header">
+    <div class="paper-type">{{ page.paper_type | default: "Research Paper" }}</div>
+    <h1>{{ page.title }}</h1>
+
+    <div class="paper-authors">
+      {% for author in page.authors %}
+      <span class="author">
+        {{ author.name }}{% if author.affiliation %}<sup>{{ forloop.index }}</sup>{% endif %}{% unless forloop.last %}, {% endunless %}
+      </span>
+      {% endfor %}
+    </div>
+
+    <div class="paper-affiliations">
+      {% for author in page.authors %}
+      {% if author.affiliation %}
+      <div><sup>{{ forloop.index }}</sup> {{ author.affiliation }}</div>
+      {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="paper-meta">
+      <span class="date">Published: {{ page.date | date: "%B %d, %Y" }}</span>
+      {% if page.doi %}<span class="doi">DOI: {{ page.doi }}</span>{% endif %}
+    </div>
+  </header>
+
+  {% if page.abstract %}
+  <section class="paper-abstract">
+    <h2>Abstract</h2>
+    <p>{{ page.abstract }}</p>
+  </section>
+  {% endif %}
+
+  {% if page.keywords %}
+  <div class="paper-keywords">
+    <strong>Keywords:</strong>
+    {% for keyword in page.keywords %}
+    <span class="keyword">{{ keyword }}</span>{% unless forloop.last %}, {% endunless %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="paper-content">
+    {{ content }}
+  </div>
+
+  {% if page.reviews %}
+  <section class="paper-reviews">
+    <h2>Agentic Reviews</h2>
+    <p class="reviews-intro">This paper was evaluated by our multi-agent review system. Full reviews are published for transparency.</p>
+
+    {% for review in page.reviews %}
+    <div class="review-card" data-agent="{{ review.agent }}">
+      <div class="review-header">
+        <span class="agent-name">{{ review.agent | capitalize }} Reviewer</span>
+        <span class="agent-score">Score: {{ review.score }}/5</span>
+      </div>
+      <div class="review-body">
+        <div class="review-section">
+          <strong>Strengths:</strong>
+          <p>{{ review.strengths }}</p>
+        </div>
+        <div class="review-section">
+          <strong>Weaknesses:</strong>
+          <p>{{ review.weaknesses }}</p>
+        </div>
+        <div class="review-section">
+          <strong>Recommendation:</strong>
+          <p>{{ review.recommendation }}</p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <footer class="paper-footer">
+    {% if page.code_url %}
+    <a href="{{ page.code_url }}" class="paper-link">Code Repository</a>
+    {% endif %}
+    {% if page.data_url %}
+    <a href="{{ page.data_url }}" class="paper-link">Dataset</a>
+    {% endif %}
+    <a href="{{ '/papers/' | relative_url }}" class="paper-link">All Papers</a>
+  </footer>
+</article>
