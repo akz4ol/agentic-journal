@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-01-02T00:10:49Z",
+  "workflow_success_rate": 33,
+  "total_runs_24h": 9,
+  "successful_runs": 3,
+  "failed_runs": 4,
+  "avg_processing_time_min": 2,
+  "pending_submissions": 0,
+  "open_submissions": 1,
+  "total_reviews": 2,
+  "status": "critical"
+}
