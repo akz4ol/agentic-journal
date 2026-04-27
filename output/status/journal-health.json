@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-04-27T12:28:51Z",
-  "workflow_success_rate": 0,
-  "total_runs_24h": 20,
+  "timestamp": "2026-04-27T18:25:01Z",
+  "workflow_success_rate": 100,
+  "total_runs_24h": 0,
   "successful_runs": 0,
   "failed_runs": 0,
   "avg_processing_time_min": 0,
   "pending_submissions": 0,
   "open_submissions": 1,
   "total_reviews": 2,
-  "status": "critical"
+  "status": "healthy"
 }
