@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📄 Submit a paper for review
+    url: https://clearlensjournal.com/portal/
+    about: Paper submissions go through the journal portal, not GitHub issues. The portal handles PDF upload, metadata, and ID assignment automatically.
+  - name: 💬 Ask a question or start a discussion
+    url: https://github.com/akz4ol/agentic-journal/discussions
+    about: For open-ended questions, ideas, or community discussion. Please use Discussions instead of opening an issue.
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/akz4ol/agentic-journal/security/advisories/new
+    about: Security issues must be reported privately. Please do not open a public issue.
+  - name: ⚖️ Code of Conduct concern
+    url: mailto:conduct@clearlensjournal.com
+    about: Report a code-of-conduct violation privately to the maintainers.
