@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-07-02T13:40:30Z",
+  "timestamp": "2026-07-02T19:10:58Z",
   "workflow_success_rate": 100,
   "total_runs_24h": 0,
   "successful_runs": 0,
@@ -7,6 +7,6 @@
   "avg_processing_time_min": 0,
   "pending_submissions": 0,
   "open_submissions": 1,
-  "total_reviews": 2,
+  "total_reviews": 0,
   "status": "healthy"
 }
