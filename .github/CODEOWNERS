@@ -1,0 +1,24 @@
+# Code owners for agentic-journal
+# Each line: <pattern>  <owner>...
+# The last matching pattern wins.
+#
+# When more maintainers join, add them here. Teams (e.g. @org/editorial)
+# are preferred over individual users for areas with multiple owners.
+
+# Default owner — every change requires review by a maintainer
+*                              @akz4ol
+
+# Agent and prompt changes — quality-sensitive, separate review
+/agents/                       @akz4ol
+/prompts/                      @akz4ol
+/scripts/                      @akz4ol
+
+# Editorial / governance content — wording matters
+/CODE_OF_CONDUCT.md            @akz4ol
+/CONTRIBUTING.md               @akz4ol
+/SECURITY.md                   @akz4ol
+/LICENSE                       @akz4ol
+
+# CI and infra — guardrails for everyone else
+/.github/                      @akz4ol
+/.github/workflows/            @akz4ol
