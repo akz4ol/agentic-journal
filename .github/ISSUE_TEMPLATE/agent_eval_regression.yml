@@ -1,0 +1,91 @@
+name: 🤖 Agent eval regression
+description: Report a regression in agent or prompt behavior caught by evals or observed in production
+title: "[Eval Regression] <agent>: <symptom>"
+labels: [agent, bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template when an agent's behavior has demonstrably worsened — review quality, citation accuracy, factuality, tone, cost, or latency.
+
+  - type: input
+    id: agent
+    attributes:
+      label: Agent name
+      description: From the agent registry (see #16) — e.g. `reviewer-v2`, `qc-second-pass`.
+      placeholder: reviewer-v2
+    validations:
+      required: true
+
+  - type: input
+    id: prompt_version
+    attributes:
+      label: Prompt version / commit
+      description: Path under `prompts/` and the git SHA where the regression was observed.
+      placeholder: prompts/reviewer.md @ a1b2c3d
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      placeholder: claude-opus-4-7 / claude-sonnet-4-6 / etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Observed regression
+      description: What changed? Score delta if available.
+      placeholder: Citation-accuracy score dropped from 0.92 → 0.78 on the AI/ML golden set after merging #123.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: How to reproduce — eval command or production run ID.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Artifacts
+      description: Audit-ledger entries, eval output, sample inputs/outputs (links or pasted with sensitive data redacted).
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical — papers actively reviewed with broken agent
+        - High — regression on golden set above threshold
+        - Medium — small but real quality drop
+        - Low — flake / borderline
+    validations:
+      required: true
+
+  - type: input
+    id: cost_delta
+    attributes:
+      label: Cost / latency impact (if any)
+      placeholder: +35% tokens per run, +12s p50 latency
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: gates
+    attributes:
+      label: Gates
+      options:
+        - label: I've checked this isn't already tracked
+          required: true
+        - label: I've linked the offending PR or prompt change above (if known)
+          required: false
