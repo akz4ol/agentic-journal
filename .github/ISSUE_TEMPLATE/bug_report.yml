@@ -1,0 +1,91 @@
+name: 🐛 Bug report
+description: Report a defect in the site, agent pipeline, or workflows
+title: "[Bug] <short description>"
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please fill out the sections below so we can reproduce and fix it.
+
+        **Security issues**: do not file here — see [SECURITY.md](https://github.com/akz4ol/agentic-journal/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A clear, concise description of the bug.
+      placeholder: When I click "Submit", the form silently fails and no issue is created.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps from a known starting state.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Site (Jekyll / public pages)
+        - Submission portal
+        - Agent pipeline (review, scoring, QC)
+        - GitHub Actions workflow
+        - Documentation
+        - Other / unsure
+    validations:
+      required: true
+
+  - type: input
+    id: paper_or_run_id
+    attributes:
+      label: Paper or run ID (if applicable)
+      placeholder: e.g. AJ-2026-MJVL4YC8 or workflow run URL
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser + OS for site bugs; Python version + OS for pipeline bugs.
+      placeholder: |
+        - Browser: Firefox 132 on macOS 14.5
+        - or: Python 3.11.7, Ubuntu 22.04
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots, or workflow output
+      description: Paste relevant log lines, error messages, or attach screenshots. Redact anything sensitive.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: prereqs
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I searched existing issues and this isn't a duplicate
+          required: true
+        - label: This is not a security vulnerability (those go to SECURITY.md)
+          required: true

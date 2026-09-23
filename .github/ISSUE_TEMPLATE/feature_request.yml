@@ -1,0 +1,69 @@
+name: ✨ Feature request
+description: Suggest a new capability or improvement
+title: "[Feature] <short description>"
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Please describe the problem first, the proposed solution second.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What's the situation today? Who is affected? Why does it matter?
+      placeholder: Reviewers can't tell which agent version produced a critique, so it's hard to track regressions over time.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should change? Concrete is better than abstract.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you weighed and rejected, and why.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      options:
+        - Site / public pages
+        - Submission portal
+        - Agent pipeline (review, scoring, QC)
+        - Audit ledger / transparency
+        - Editorial / governance
+        - Marketing / outreach
+        - Infrastructure / CI
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: success
+    attributes:
+      label: How would we know it worked?
+      description: One or two measurable acceptance criteria.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: prereqs
+    attributes:
+      label: Pre-flight checks
+      options:
+        - label: I searched existing issues and this isn't a duplicate
+          required: true
+        - label: I'm willing to discuss tradeoffs before any work starts
+          required: true
